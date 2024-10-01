@@ -1,4 +1,7 @@
-# PrACo: Presence Aware Counting Benchmark
+# PrACo: Prompt-Aware Counting Benchmark
+
+Paper link: [Mind the Prompt: A Novel Benchmark for Prompt-based Class-Agnostic Counting](https://arxiv.org/abs/2409.15953)
+![qualitative_mosaics-1](https://github.com/user-attachments/assets/4e0eca81-8038-432f-845f-b5f92cc06035)
 
 ## Table of Contents
 
@@ -7,8 +10,8 @@
 3. [Installation](#installation)
    - [1. Create a Conda Environment](#1-create-a-conda-environment)
    - [2. Download the FSC-147 Dataset](#2-download-the-fsc-147-dataset)
-   - [3. Clone and Install Model Repositories](#3-clone-and-install-model-repositories)
-   - [4. Download Pre-Trained Weights](#4-download-pre-trained-weights)
+   - [3. Download Pre-Trained Weights](#3-download-pre-trained-weights)
+   - [4. Download Model-specific Files](#4-download-model-specific-files)
 4. [Running the Benchmark](#running-the-benchmark)
 5. [Example](#example)
 6. [Running Statistics](#running-statistics)
@@ -16,7 +19,7 @@
 
 ## Overview
 
-**Mind the Prompt: A Novel Benchmark for Prompt-based Class-Agnostic Counting** introduces a new benchmark named **PrACo** (**Pr**esence **A**ware **Co**unting Benchmark) designed to evaluate the performance of different models in counting objects in images with an awareness of object presence. This repository includes the necessary scripts and instructions to run the benchmark and evaluate the models described in the paper.
+**Mind the Prompt: A Novel Benchmark for Prompt-based Class-Agnostic Counting** introduces a new benchmark named **PrACo** (**Pr**ompt-**A**ware **Co**unting Benchmark) designed to evaluate the performance of different class-agnostic prompt-guided counting models in counting the correct objects. In the paper, we demonstrated how state-of-the-art models fail to correctly understand the provided textual prompt, defaulting to the most prevalent object class instead. This repository includes the necessary scripts and instructions to run the benchmark and evaluate the models described in the paper.
 
 ## Repository Structure
 
