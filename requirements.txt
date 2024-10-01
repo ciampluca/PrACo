@@ -1,0 +1,20 @@
+torch
+Pillow
+torchvision
+opencv-python
+scipy
+imgaug
+numpy<2.0.0
+pandas
+transformers
+einops
+pytorch_lightning
+gradio
+inflect
+dotmap
+scikit-learn
+pycocotools
+selective_search
+seaborn
+git+https://github.com/openai/CLIP.git
+-e ./models/CounTX/open_clip
