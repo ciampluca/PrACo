@@ -64,7 +64,7 @@ print()
 print(f"Running negative label test on split: {args.split}")
 
 benchmark.run_negative_label_test(
-    output_csv=f"multiclass_{output_prefix}_{args.split}.csv",
+    output_csv=f"multiclass_{output_prefix}_{args.split}1.csv",
     split=args.split
 )
 
