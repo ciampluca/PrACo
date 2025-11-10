@@ -137,6 +137,9 @@ class MulticlassStatisticsExtractor(StatisticsExtractor):
             self.aggregation_df.loc[self.aggregation_df[f"{class_name}_GT"].isna(), f"{class_name}_negative-GT_gap"] = np.nan
             self.aggregation_df.loc[self.aggregation_df[f"{class_name}_GT"].isna(), f"{class_name}_positive-negative_gap"] = np.nan
 
+            # prevent fragmentation issues
+            self.aggregation_df = self.aggregation_df.copy()
+
         # compute overall metrics
         # for each row, we average the positive-negative, positive-gt and negative-gt gaps for the present classes (where the cell is not np.nan)
         def compute_mean_gap(row, gap_type):
