@@ -397,14 +397,14 @@ def load_model(args, model_without_ddp, optimizer, loss_scaler):
             print("With optim & sched!")
 
 
-def load_model_FSC(args, model_without_ddp):
+def load_model_FSC(args, model_without_ddp, device="cpu"):
     if args.resume:
         if args.resume.startswith("https"):
             checkpoint = torch.hub.load_state_dict_from_url(
-                args.resume, map_location="cpu", check_hash=True
+                args.resume, map_location=device, check_hash=True
             )
         else:
-            checkpoint = torch.load(args.resume, map_location="cpu")
+            checkpoint = torch.load(args.resume, map_location=device)
 
         if (
             "pos_embed" in checkpoint["model"]

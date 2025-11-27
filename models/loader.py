@@ -12,9 +12,11 @@ def load_model(model_name, img_directory, split_images, split_classes, load_filt
     if model_name == 'CounTX':
         from models.countx_model import CounTXModel
         if load_filtered_checkpoints:
-            raise NotImplementedError("Filtered checkpoint loading not implemented for CounTX.")
+            filtered_checkpoint = os.path.join(dirname_file, "CounTX/checkpoints/countx_fsc147_filtered_checkpoint-1000.pth")
+            return CounTXModel(img_directory, split_images, split_classes, model_ckpt=filtered_checkpoint, device=device)
         else:
-            return CounTXModel(img_directory, split_images, split_classes)
+            checkpoint = os.path.join(dirname_file, "pretrained_models/paper-model.pth")
+            return CounTXModel(img_directory, split_images, split_classes, model_ckpt=checkpoint, device=device)
     elif model_name == 'CLIP-Count':
         from models.clipcount_model import CLIPCountModel
         if load_filtered_checkpoints:
