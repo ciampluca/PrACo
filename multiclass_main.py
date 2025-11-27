@@ -12,6 +12,7 @@ parser.add_argument('--img_directory', type=str, default='data/multiclass-datase
 parser.add_argument('--split_classes_file', type=str, default="multiclass_split_classes.json", help="Filename for the split classes JSON. It contains a mapping from split names to classes str lists.")
 parser.add_argument('--split_images_file', type=str, default="multiclass_split_images.json", help="Filename for the split images JSON. It contains a mapping from split names to image filename str lists.")
 parser.add_argument('--img_class_txt', type=str, default="multiclass_image_classes.txt", help="Filename for the image classes TXT. It contains image filename and comma-separated classes per line.")
+parser.add_argument('--device', type=str, default="cuda", help="Device to run the model on, e.g., 'cuda' or 'cpu'.")
 
 parser.add_argument('--split', type=str, default="test", help="Split to be considered", choices=['test'])
 
@@ -47,11 +48,14 @@ with open(img_class_txt_path, 'r') as file:
 
 
 # Select and initialize the model based on the argument
+print(f"Loading model: {args.model} on device: {args.device}")
 model = load_model(
     model_name=args.model,
     img_directory=img_directory,
     split_images=split_images,
-    split_classes=split_classes
+    split_classes=split_classes,
+    load_filtered_checkpoints=True,
+    device=args.device
 )
 output_prefix = args.model
 

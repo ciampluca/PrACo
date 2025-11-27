@@ -108,7 +108,7 @@ class SampleBuilder:
         image = imgprocess(img, self.clip_ksize, scale_factor=1).unsqueeze(0).to(self.device)
 
         with torch.inference_mode():
-            text = clip.tokenize(items).to(self.device)
+            text = clip.tokenize(items, truncate=True).to(self.device)
             text_features = self.clipmodel.encode_text(text)[None, ...]
             dense_features = self.clip_encode_dense(image)
             
@@ -358,7 +358,8 @@ import logging
 logger = logging.getLogger()
 
 class FixedPointPromptCountingModel(BaseModel):
-    def __init__(self, img_directory, split_images, split_classes, device=None):
+    def __init__(self, img_directory, split_images, split_classes, device=None, checkpoint_path = os.path.join(os.path.dirname(__file__), "FixedPointPromptCounting/fxp.pth")
+        ):
         super().__init__(img_directory, split_images, split_classes)
 
         if device is None:
@@ -367,7 +368,6 @@ class FixedPointPromptCountingModel(BaseModel):
         self.model_name = "FixedPointPromptCounting"
         self.sample_builder = SampleBuilder(device=device)
 
-        checkpoint_path = os.path.join(os.path.dirname(__file__), "FixedPointPromptCounting/fxp.pth")
         args, self.config = get_args_parser(device, checkpoint_path)
 
         self.model, criterion = build_model(self.config.MODEL)
