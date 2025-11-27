@@ -34,7 +34,8 @@ def load_model(model_name, img_directory, split_images, split_classes, load_filt
     elif model_name == 'VLCounter':
         from models.vlcounter_model import VLCounterModel
         if load_filtered_checkpoints:
-            raise NotImplementedError("Filtered checkpoint loading not implemented for VLCounter.")
+            filtered_checkpoint = os.path.join(dirname_file, "VLCounter/checkpoints/fsc_filtered_vlcounter_283_best.pth")
+            return VLCounterModel(img_directory, split_images, split_classes, model_ckpt=filtered_checkpoint, device=device)
         else:
             return VLCounterModel(img_directory, split_images, split_classes)
     elif model_name == 'DAVE':
