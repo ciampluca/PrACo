@@ -27,7 +27,8 @@ def load_model(model_name, img_directory, split_images, split_classes, load_filt
     elif model_name == 'TFPOC':
         from models.TFPOC_model import ClipSAMModel
         if load_filtered_checkpoints:
-            raise NotImplementedError("Filtered checkpoint loading not implemented for TFPOC.")
+            filtered_checkpoint = os.path.join(dirname_file, "TFPOC/pretrain/fsc_filtered_sam_vit_b_01ec64.pth")
+            return ClipSAMModel(img_directory, split_images, split_classes, sam_checkpoint=filtered_checkpoint, device=device)
         else:
             return ClipSAMModel(img_directory, split_images, split_classes)
     elif model_name == 'VLCounter':
