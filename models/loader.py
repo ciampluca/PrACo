@@ -18,9 +18,10 @@ def load_model(model_name, img_directory, split_images, split_classes, load_filt
     elif model_name == 'CLIP-Count':
         from models.clipcount_model import CLIPCountModel
         if load_filtered_checkpoints:
-            raise NotImplementedError("Filtered checkpoint loading not implemented for CLIP-Count.")
+            filtered_checkpoint = os.path.join(dirname_file, "CLIPCount/checkpoints/clipcount_fsc147_filtered.ckpt")
+            return CLIPCountModel(img_directory, split_images, split_classes, model_ckpt=filtered_checkpoint, device=device)
         else:
-            return CLIPCountModel(img_directory, split_images, split_classes)
+            return CLIPCountModel(img_directory, split_images, split_classes, device=device)
     elif model_name == 'TFPOC':
         from models.TFPOC_model import ClipSAMModel
         if load_filtered_checkpoints:

@@ -49,18 +49,18 @@ class CLIPCount(nn.Module):
         # --------------------------------------------------------------------------
         # MAE encoder specifics
         if backbone == "b16":
-            self.clip, clip_preprocess = clip.load("ViT-B/16")
+            self.clip, clip_preprocess = clip.load("ViT-B/16", device="cuda")
             self.n_patches = 14*14
             self.clip_hidden_dim = 768
             self.clip_out_dim = 512
         elif backbone == "b32":
-            self.clip, clip_preprocess = clip.load("ViT-B/32")
+            self.clip, clip_preprocess = clip.load("ViT-B/32", device="cuda")
             self.n_patches = 7*7
             self.clip_hidden_dim = 768
             self.clip_out_dim = 512
 
         elif backbone == "l14":
-            self.clip, clip_preprocess = clip.load("ViT-L/14")
+            self.clip, clip_preprocess = clip.load("ViT-L/14", device="cuda")
             self.n_patches = 16*16
             self.clip_hidden_dim = 1024
             self.clip_out_dim = 768

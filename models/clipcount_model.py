@@ -10,9 +10,9 @@ SCALE_FACTOR = 60
 
 class CLIPCountModel(BaseModel):
     
-    def __init__(self, img_directory, split_images, split_classes, model_ckpt='pretrained_models/clipcount_pretrained.ckpt'):
+    def __init__(self, img_directory, split_images, split_classes, model_ckpt='pretrained_models/clipcount_pretrained.ckpt', device='cuda'):
         super().__init__(img_directory, split_images, split_classes)
-        self.model = run.Model.load_from_checkpoint(model_ckpt, strict=False)
+        self.model = run.Model.load_from_checkpoint(model_ckpt, map_location=device, strict=False)
         self.model.eval()
         self.model_name = "CLIP-Count"
         
