@@ -50,9 +50,15 @@ def load_model(model_name, img_directory, split_images, split_classes, load_filt
     elif model_name == 'PseCo':
         from models.PseCo_model import PseCoModel
         if load_filtered_checkpoints:
-            raise NotImplementedError("Filtered checkpoint loading not implemented for PseCo.")
+            filtered_point_decoder_ckpt = os.path.join(dirname_file, "PseCo/checkpoints/PseCo_fsc_filtered_point_decoder_vith.pth")
+            filtered_cls_head_ckpt = os.path.join(dirname_file, "PseCo/checkpoints/PseCo_fsc_filtered_cls_head-10000.tar")
+            filtered_clip_text_prompt_ckpt = os.path.join(dirname_file, "PseCo/checkpoints/PseCo_fsc_filtered_clip_text_prompt_test_split.pth")
+            return PseCoModel(img_directory, split_images, split_classes,
+                              point_decoder_ckpt=filtered_point_decoder_ckpt,
+                              cls_head_ckpt=filtered_cls_head_ckpt,
+                              clip_text_prompt_ckpt=filtered_clip_text_prompt_ckpt, device=device)
         else:
-            return PseCoModel(img_directory, split_images, split_classes)
+            return PseCoModel(img_directory, split_images, split_classes, device=device)
     elif model_name == 'GroundingREC':
         from models.GroundingREC_model import GroundingRECModel
         if load_filtered_checkpoints:

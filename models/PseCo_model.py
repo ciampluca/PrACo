@@ -12,13 +12,10 @@ from .PseCo.models import PointDecoder, ROIHeadMLP as ROIHead
 
 class PseCoModel(BaseModel):
     def __init__(self, img_directory, split_images, split_classes, point_decoder_ckpt='pretrained_models/point_decoder_vith.pth', 
-                 cls_head_ckpt='pretrained_models/MLP_small_box_w1_zeroshot.tar', clip_text_prompt_ckpt='pretrained_models/clip_text_prompt.pth'):
+                 cls_head_ckpt='pretrained_models/MLP_small_box_w1_zeroshot.tar', clip_text_prompt_ckpt='pretrained_models/clip_text_prompt.pth', device="cuda"):
         super().__init__(img_directory, split_images, split_classes)
         self.model_name = "PseCo"
-        if torch.cuda.is_available():
-            self.device = torch.device('cuda')
-        else:
-            self.device = torch.device('cpu')
+        self.device = torch.device(device)
 
         # Load models
         self.sam = build_sam_vit_h()
@@ -29,6 +26,9 @@ class PseCoModel(BaseModel):
         self.point_decoder = self.point_decoder.to(self.device)
         self.point_decoder.eval()
         state_dict = torch.load(point_decoder_ckpt, map_location='cpu')
+        if 'point_decoder' in state_dict:
+            print("Loading point decoder state dict from 'point_decoder' key.")
+            state_dict = state_dict['point_decoder']
         self.point_decoder.load_state_dict(state_dict)
         self.point_decoder.max_points = 1000
         self.point_decoder.point_threshold = 0.05
@@ -37,7 +37,11 @@ class PseCoModel(BaseModel):
         self.cls_head = ROIHead().cuda().eval()
         self.cls_head = self.cls_head.to(self.device)
         self.cls_head.eval()
-        self.cls_head.load_state_dict(torch.load(cls_head_ckpt, map_location='cpu')['cls_head'])
+        cls_head_state_dict = torch.load(cls_head_ckpt, map_location='cpu')
+        if 'cls_head' in cls_head_state_dict:
+            print("Loading classification head state dict from 'cls_head' key.")
+            cls_head_state_dict = cls_head_state_dict['cls_head']
+        self.cls_head.load_state_dict(cls_head_state_dict)
         
         self.clip_text_prompts = torch.load(clip_text_prompt_ckpt, map_location='cpu')
 
