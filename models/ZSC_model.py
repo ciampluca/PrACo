@@ -12,27 +12,25 @@ from .ZSC.config import cfg
 
 
 class ZSCModel(BaseModel):
-    def __init__(self, img_directory, split_images, split_classes, model_ckpt='pretrained_models/zsc_model_best.pth', config="models/ZSC/config/test.yaml"):
+    def __init__(self, img_directory, split_images, split_classes, model_ckpt='pretrained_models/zsc_model_best.pth', config="models/ZSC/config/test.yaml", device="cuda"):
         super().__init__(img_directory, split_images, split_classes)
         self.model_name = "ZSC"
         self.img_classes = "data/ImageClasses_FSC147.txt"
         self.cls_list = get_image_classes(self.img_classes)
         cfg.merge_from_file(config)
-        if torch.cuda.is_available():
-            self.device = torch.device('cuda')
-        else:
-            self.device = torch.device('cpu')
-        
+
+        self.device = torch.device(device)
+
         # Load model and regressor
         self.model = build_model(cfg)
         self.model = self.model.to(self.device)
         self.model.eval()
         self.model_imgnet = copy.deepcopy(self.model)
-        checkpoint = torch.load(model_ckpt, map_location='cpu')
+        checkpoint = torch.load(model_ckpt, map_location=self.device)
         self.model.load_state_dict(checkpoint['model'])
 
         self.regressor = get_regressor(cfg)
-        self.regressor.load_state_dict(torch.load('models/ZSC/pretrain/regressor.pth')) 
+        self.regressor.load_state_dict(torch.load('models/ZSC/pretrain/regressor.pth', map_location=self.device)) 
         self.regressor = self.regressor.to(self.device)
         self.regressor.eval()
 

@@ -12,12 +12,13 @@ SCALE_FACTOR = 60
 
 
 class DAVEModel(BaseModel):
-    def __init__(self, img_directory, split_images, split_classes, model_ckpt='pretrained_models/DAVE_0_shot.pth', feat_comp_ckpt="pretrained_models/verification.pth"):
+    def __init__(self, img_directory, split_images, split_classes, model_ckpt='pretrained_models/DAVE_0_shot.pth', feat_comp_ckpt="pretrained_models/verification.pth", device = "cuda"):
         super().__init__(img_directory, split_images, split_classes)
 
-        gpu = 0
-        torch.cuda.set_device(gpu)
-        self.device = torch.device(gpu)
+        torch.cuda.set_device(device)
+        self.device = torch.device(device)
+
+        gpu = torch.cuda.current_device()
 
         args = DotMap()
         args.image_size = 512
@@ -130,12 +131,14 @@ class DAVEModel(BaseModel):
         # for name, buffer in self.model.named_buffers():
         #     if buffer.device != torch.device('cuda:0'):
         #         print(f'Buffer {name} is on {buffer.device}')
-        if any([p.device != torch.device('cuda:0') for p in self.model.parameters()]):
-            print('WARNING: Model parameters are not on the correct device. Moving to cuda:0')
+        if any([p.device != self.device for p in self.model.parameters()]):
+            print(f'WARNING: Model parameters are not on the correct device. Moving to {self.device}')
             self.model.to(self.device)
 
+        text_positive_list = ([text_positive] if isinstance(text_positive, str) else text_positive) if text_positive is not None else None
+
         with torch.no_grad():
-            out, aux, tblr, boxes_pred = self.model(img, bboxes, img_name, classes=[text], positive_classes=[text_positive] if text_positive is not None else None)
+            out, aux, tblr, boxes_pred = self.model(img, bboxes, img_name, classes=[text], positive_classes=text_positive_list)
 
         boxes_predicted = boxes_pred.box
         scale_y = min(1, 50 / (boxes_predicted[:, 2] - boxes_predicted[:, 0]).mean())

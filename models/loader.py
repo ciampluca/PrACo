@@ -40,11 +40,17 @@ def load_model(model_name, img_directory, split_images, split_classes, load_filt
             return VLCounterModel(img_directory, split_images, split_classes)
     elif model_name == 'DAVE':
         from models.dave_model import DAVEModel
-        return DAVEModel(img_directory, split_images, split_classes)
+        if load_filtered_checkpoints:
+            filtered_checkpoint = os.path.join(dirname_file, "pretrained_models/DAVE_FSC_filtered_0_shot.pth")
+            feat_comp_ckpt = os.path.join(dirname_file, "pretrained_models/DAVE_FSC_filtered_verification.pth")
+            return DAVEModel(img_directory, split_images, split_classes, model_ckpt=filtered_checkpoint, feat_comp_ckpt=feat_comp_ckpt, device=device)
+        else:
+            return DAVEModel(img_directory, split_images, split_classes, device=device)
     elif model_name == 'ZSC':
         from models.ZSC_model import ZSCModel
         if load_filtered_checkpoints:
-            raise NotImplementedError("Filtered checkpoint loading not implemented for ZSC.")
+            filtered_checkpoint = os.path.join(dirname_file, "ZSC/checkpoints/ZSC_FSC_filtered_model_best.pth")
+            return ZSCModel(img_directory, split_images, split_classes, model_ckpt=filtered_checkpoint, device=device)
         else:
             return ZSCModel(img_directory, split_images, split_classes)
     elif model_name == 'PseCo':
@@ -62,9 +68,10 @@ def load_model(model_name, img_directory, split_images, split_classes, load_filt
     elif model_name == 'GroundingREC':
         from models.GroundingREC_model import GroundingRECModel
         if load_filtered_checkpoints:
-            raise NotImplementedError("Filtered checkpoint loading not implemented for GroundingREC.")
+            filtered_checkpoint = os.path.join(dirname_file, "pretrained_models/GroundingREC_FSC_filtered_model.pth")
+            return GroundingRECModel(img_directory, split_images, split_classes, model_ckpt=filtered_checkpoint, device=device)
         else:
-            return GroundingRECModel(img_directory, split_images, split_classes)
+            return GroundingRECModel(img_directory, split_images, split_classes, device=device)
     elif model_name == 'CountGD':
         from models.countgd_model import CountGDModel
         if load_filtered_checkpoints:
