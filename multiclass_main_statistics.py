@@ -43,6 +43,10 @@ for model_name in tqdm(model_names, desc="Evaluating Models on Multiclass Benchm
 
     test_csv_dir = os.path.join(args.benchmark_inference_dir, model_name)
 
+    if not os.path.exists(test_csv_dir):
+        print(f"Skipping model {model_name} as no benchmark results found in {test_csv_dir}.")
+        continue
+
     stats_extractor = MulticlassStatisticsExtractor(model_name, data_dir, test_csv_dir, test_csv_filenames, gt_json_count_per_class_filename, img_class_txt, split_classes_filename, img_to_exclude_txt=None)
 
     stats_extractor.load_data()
