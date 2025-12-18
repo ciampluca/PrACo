@@ -50,7 +50,18 @@ def load_model(model_name, img_directory, split_images, split_classes, load_filt
         from models.ZSC_model import ZSCModel
         if load_filtered_checkpoints:
             filtered_checkpoint = os.path.join(dirname_file, "ZSC/checkpoints/ZSC_FSC_filtered_model_best.pth")
-            return ZSCModel(img_directory, split_images, split_classes, model_ckpt=filtered_checkpoint, device=device)
+            #filtered_config = os.path.join(dirname_file, "ZSC/config/ZSC_FSC_filtered_config.yaml")
+            filtered_config = os.path.join(dirname_file, "ZSC/config/test.yaml")
+            print("Using public available regressor for ZSC-Count.")
+            regressor_path = os.path.join(dirname_file, "ZSC/checkpoints/ZSC_public_checkpoint_regressor.pth")
+            print("Using vae feats publicly available for ZSC-Count.")
+            vae_feats_path = os.path.join(dirname_file, 'ZSC/checkpoints/bmnet+_ep3_epoch300_no_refiner/fsc_vae_feats.npy')
+            import json
+            classes_path = os.path.join(dirname_file, "../data/multiclass-dataset/multiclass_split_classes.json")
+            classes_list = json.load(open(classes_path, 'r'))['test']
+            print(f"Using classes list of length {len(classes_list)} for ZSC-Count.")
+
+            return ZSCModel(img_directory, split_images, split_classes, model_ckpt=filtered_checkpoint, device=device, config=filtered_config, regressor_path=regressor_path, classes_list=classes_list, vae_feats_path=vae_feats_path)
         else:
             return ZSCModel(img_directory, split_images, split_classes)
     elif model_name == 'PseCo':

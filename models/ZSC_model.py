@@ -12,11 +12,22 @@ from .ZSC.config import cfg
 
 
 class ZSCModel(BaseModel):
-    def __init__(self, img_directory, split_images, split_classes, model_ckpt='pretrained_models/zsc_model_best.pth', config="models/ZSC/config/test.yaml", device="cuda"):
+    def __init__(self, img_directory, split_images, split_classes, model_ckpt='pretrained_models/zsc_model_best.pth', 
+                 config="models/ZSC/config/test.yaml", device="cuda",
+                 classes_list=None, img_classes_path = "data/ImageClasses_FSC147.txt",
+                 regressor_path='models/ZSC/pretrain/regressor.pth',
+                 vae_feats_path='models/ZSC/checkpoints/bmnet+_ep3_epoch300_no_refiner/fsc_vae_feats.npy'):
+        """
+        Initialize the ZSC-Count model.
+        """
         super().__init__(img_directory, split_images, split_classes)
         self.model_name = "ZSC"
-        self.img_classes = "data/ImageClasses_FSC147.txt"
-        self.cls_list = get_image_classes(self.img_classes)
+        
+        if classes_list is not None:
+            self.cls_list = classes_list
+        else:
+            self.cls_list = get_image_classes(img_classes_path)
+        
         cfg.merge_from_file(config)
 
         self.device = torch.device(device)
@@ -30,11 +41,11 @@ class ZSCModel(BaseModel):
         self.model.load_state_dict(checkpoint['model'])
 
         self.regressor = get_regressor(cfg)
-        self.regressor.load_state_dict(torch.load('models/ZSC/pretrain/regressor.pth', map_location=self.device)) 
+        self.regressor.load_state_dict(torch.load(regressor_path, map_location=self.device)) 
         self.regressor = self.regressor.to(self.device)
         self.regressor.eval()
 
-        self.vae_feats = np.load('models/ZSC/checkpoints/bmnet+_ep3_epoch300_no_refiner/fsc_vae_feats.npy', allow_pickle=True)
+        self.vae_feats = np.load(vae_feats_path, allow_pickle=True)
 
         self.img_trans = transforms.Compose([
             transforms.Resize(size=384),
