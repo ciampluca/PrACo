@@ -2,8 +2,10 @@ import os
 import json
 import pandas as pd
 import numpy as np
+from scipy.ndimage import zoom
+from .base_statistics_extractor import BaseStatisticsExtractor
 
-class MulticlassStatisticsExtractor:
+class MulticlassStatisticsExtractor(BaseStatisticsExtractor):
     """
     Statistics extractor for multiclass counting evaluation.
     Implements metrics defined in metrics-definitions.md for evaluating counting models
@@ -49,6 +51,11 @@ class MulticlassStatisticsExtractor:
         # Handle images to exclude
         self.img_to_exclude_txt = img_to_exclude_txt
         self.imgs_to_exclude = set()
+        
+        # Paths for density maps - pass to base class
+        gt_density_maps_dir = os.path.join(data_dir, "density_maps")
+        pred_density_maps_dir = os.path.join(test_csv_dir, "density_maps")
+        BaseStatisticsExtractor.__init__(self, gt_density_maps_dir, pred_density_maps_dir)
         
     def load_data(self):
         """Load all required data files."""
@@ -267,3 +274,185 @@ class MulticlassStatisticsExtractor:
         """Save the aggregation dataframe to CSV."""
         if self.aggregation_df is not None:
             self.aggregation_df.to_csv(output_path, index=False)
+    
+    def _load_density_map(self, img_filename, class_name, is_gt=True):
+        """
+        Load a density map for a given image and class.
+        
+        Args:
+            img_filename: Image filename (e.g., 'mcac_1.jpg')
+            class_name: Class name
+            is_gt: If True, load ground truth density map, else load predicted
+            
+        Returns:
+            Numpy array with density map, or None if not found
+        """
+        # Use base class method
+        density_map = BaseStatisticsExtractor._load_density_map(self, img_filename, class_name, is_gt)
+        
+        if density_map is not None:
+            # CAST TO FLOAT32:
+            # Scipy and some accumulation operations do not support float16.
+            if density_map.dtype == np.float16:
+                density_map = density_map.astype(np.float32)
+                
+        return density_map
+    
+    def compute_localized_metrics(self, divisions=0, positive_classes_only=True):
+        """
+        Compute localized metrics by partitioning density maps.
+        
+        Args:
+            divisions: Number of divisions per axis (0=whole image, 1=2x2, 2=4x4, etc.)
+            positive_classes_only: If True, only compute for positive classes
+            
+        Returns:
+            DataFrame with per-image, per-class localized metrics:
+            - Image Name
+            - Class Name
+            - Is Positive Class (boolean)
+            - Total MAE (summed across partitions)
+            - Total TP (summed across partitions)
+            - Total FP (summed across partitions)
+            - GT Count (total for the image/class)
+            - Recall (image-level: TP / GT)
+            - Precision (image-level: TP / (TP + FP))
+            - F-score (image-level: harmonic mean of precision and recall)
+            - Num Partitions
+            - Has Density Maps (boolean)
+        """
+        if self.df_test1 is None:
+            raise ValueError("Must call load_data() first")
+        
+        results = []
+        missing_density_maps_count = 0
+        
+        for img_filename in self.df_test1.index:
+            if img_filename in self.imgs_to_exclude:
+                continue
+            
+            positive_classes = self.img_classes[img_filename]
+            
+            # Determine which classes to process
+            if positive_classes_only:
+                classes_to_process = positive_classes
+            else:
+                classes_to_process = self.all_classes
+            
+            for class_name in classes_to_process:
+                is_positive = class_name in positive_classes
+                
+                # Load density maps
+                gt_density_map = self._load_density_map(img_filename, class_name, is_gt=True)
+                pred_density_map = self._load_density_map(img_filename, class_name, is_gt=False)
+                
+                # Check if density maps exist
+                has_density_maps = True
+                if is_positive and gt_density_map is None:
+                    has_density_maps = False
+                    missing_density_maps_count += 1
+                    print(f"Warning: Missing GT density map for {img_filename}, class {class_name}")
+                
+                if pred_density_map is None:
+                    has_density_maps = False
+                    missing_density_maps_count += 1
+                    print(f"Warning: Missing predicted density map for {img_filename}, class {class_name}")
+                
+                if not has_density_maps:
+                    # Record that density maps are missing
+                    results.append({
+                        'Image Name': img_filename,
+                        'Class Name': class_name,
+                        'Is Positive Class': is_positive,
+                        'Total MAE': None,
+                        'Total TP': None,
+                        'Total FP': None,
+                        'Num Partitions': None,
+                        'Has Density Maps': False
+                    })
+                    continue
+                
+                # For negative classes, create a zero GT density map
+                if not is_positive:
+                    gt_density_map = np.zeros_like(pred_density_map)
+                
+                # Handle shape mismatches by resizing predicted density map
+                if gt_density_map.shape != pred_density_map.shape:
+                    pred_density_map = self._resize_density_map(pred_density_map, gt_density_map.shape)
+                    
+                    # Verify the shape now matches
+                    if gt_density_map.shape != pred_density_map.shape:
+                        print(f"Error: Failed to resize density map for {img_filename}, class {class_name}: "
+                              f"GT {gt_density_map.shape} vs Resized Pred {pred_density_map.shape}")
+                        results.append({
+                            'Image Name': img_filename,
+                            'Class Name': class_name,
+                            'Is Positive Class': is_positive,
+                            'Total MAE': None,
+                            'Total TP': None,
+                            'Total FP': None,
+                            'GT Count': None,
+                            'Recall': None,
+                            'Precision': None,
+                            'F-score': None,
+                            'Num Partitions': None,
+                            'Has Density Maps': False
+                        })
+                        continue
+                
+                # Partition the density maps
+                gt_partitions = self._partition_density_map(gt_density_map, divisions)
+                pred_partitions = self._partition_density_map(pred_density_map, divisions)
+                
+                # Compute metrics for each partition using base class method
+                total_mae = 0
+                total_tp = 0
+                total_fp = 0
+                num_partitions = len(gt_partitions)
+                
+                for (gt_part, i, j), (pred_part, _, _) in zip(gt_partitions, pred_partitions):
+                    partition_metrics = self._compute_partition_metrics(gt_part, pred_part)
+                    total_mae += partition_metrics['mae']
+                    total_tp += partition_metrics['tp']
+                    total_fp += partition_metrics['fp']
+                
+                # Compute image-level metrics from summed TP and FP
+                gt_count_total = gt_density_map.sum()
+                
+                # Recall = TP / GT
+                if gt_count_total > 0:
+                    recall = total_tp / gt_count_total
+                else:
+                    recall = np.nan
+                
+                # Precision = TP / (TP + FP)
+                if (total_tp + total_fp) > 0:
+                    precision = total_tp / (total_tp + total_fp)
+                else:
+                    precision = np.nan
+                
+                # F-score = 2 * (Precision * Recall) / (Precision + Recall)
+                if precision > 0 and recall > 0:
+                    fscore = 2 * (precision * recall) / (precision + recall)
+                else:
+                    fscore = np.nan
+                
+                results.append({
+                    'Image Name': img_filename,
+                    'Class Name': class_name,
+                    'Is Positive Class': is_positive,
+                    'Total MAE': round(total_mae, self.metric_precision),
+                    'Total TP': round(total_tp, self.metric_precision),
+                    'Total FP': round(total_fp, self.metric_precision),
+                    'GT Count': round(gt_count_total, self.metric_precision),
+                    'Recall': round(recall, self.metric_precision) if not np.isnan(recall) else None,
+                    'Precision': round(precision, self.metric_precision) if not np.isnan(precision) else None,
+                    'F-score': round(fscore, self.metric_precision) if not np.isnan(fscore) else None,
+                    'Num Partitions': num_partitions,
+                    'Has Density Maps': True
+                })
+        
+        if missing_density_maps_count > 0:
+            print(f"\nTotal missing density maps: {missing_density_maps_count}")
+        
+        return pd.DataFrame(results)

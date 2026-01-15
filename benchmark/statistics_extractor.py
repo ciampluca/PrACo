@@ -2,9 +2,11 @@ import os
 import json
 import pandas as pd
 import numpy as np
+import tqdm
+from .base_statistics_extractor import BaseStatisticsExtractor
 
-class StatisticsExtractor:
-    def __init__(self, model_name, data_dir, test_csv_dir, test_csv_filenames, gt_json_filename, img_class_txt, split_classes_file, precision=2, metric_precision=3, img_to_exclude_txt=None):
+class StatisticsExtractor(BaseStatisticsExtractor):
+    def __init__(self, model_name, data_dir, test_csv_dir, test_csv_filenames, gt_json_filename, img_class_txt, split_classes_file, precision=2, metric_precision=3, img_to_exclude_txt=None, gt_density_maps_dir=None, pred_density_maps_dir=None):
         
         self.model_name = model_name
         self.data_dir = data_dir
@@ -23,6 +25,13 @@ class StatisticsExtractor:
         self.split_classes = {}
         self.img_to_exclude_txt = img_to_exclude_txt if img_to_exclude_txt is not None else None
         self.imgs_to_exclude =  None
+        
+        # Initialize base class for density map handling
+        if gt_density_maps_dir is None:
+            gt_density_maps_dir = os.path.join(data_dir, "density_maps")
+        if pred_density_maps_dir is None:
+            pred_density_maps_dir = os.path.join(test_csv_dir, "density_maps")
+        BaseStatisticsExtractor.__init__(self, gt_density_maps_dir, pred_density_maps_dir)
 
     def load_data(self):
         # Load Test1 CSV file
@@ -174,6 +183,174 @@ class StatisticsExtractor:
                                             'Precision': np.array(precision_per_row.values),
                                             'F-score': np.array(fscore_per_row.values)
                                             })
+
+    def compute_test2_localized_metrics(self, divisions=0, collage_type="vertical"):
+        """
+        Compute localized metrics for test2 (mosaic test) using density map partitions.
+        Test2 creates a mosaic with the positive class image and a negative class image.
+        - Vertical: positive class on top, negative class on bottom
+        - Horizontal: positive class on left, negative class on right
+        The GT density map for the positive part contains actual annotations, and the negative part should be all zeros.
+        
+        For each test image, there are multiple mosaics (one per negative class), each with its own density maps.
+        
+        Args:
+            divisions: Number of divisions (0=whole, 1=2x2, 2=4x4, etc.)
+            collage_type: Type of collage - "vertical" or "horizontal" (default: "vertical")
+            
+        Returns:
+            DataFrame with per-image, per-negative-class localized metrics:
+            - Image Name
+            - Positive Class
+            - Negative Class
+            - Total MAE (summed across partitions)
+            - Total TP (summed across partitions)
+            - Total FP (summed across partitions)
+            - GT Count
+            - Recall (TP / GT)
+            - Precision (TP / (TP + FP))
+            - F-score
+            - Num Partitions
+            - Has Density Maps
+        """
+        if self.df_upper_test2 is None:
+            raise ValueError("Must call load_data() first")
+        
+        results = []
+        missing_density_maps_count = 0
+        
+        for img_filename in tqdm.tqdm(self.df_upper_test2.index):
+            if self.imgs_to_exclude and img_filename in self.imgs_to_exclude:
+                continue
+            
+            # Get the positive class for this image
+            positive_class = self.img_class[img_filename]
+            
+            # Process each negative class (each creates a different mosaic)
+            for negative_class in self.df_upper_test2.columns:
+                if pd.isna(self.df_upper_test2.loc[img_filename, negative_class]):
+                    continue  # Skip if this combination wasn't tested
+                
+                # Load GT density map for positive part (same for all negative classes)
+                gt_density_map_positive = self._load_density_map(img_filename, class_name=None, is_gt=True)
+                
+                # Load predicted density maps for this specific (image, negative_class) mosaic
+                # Density maps are saved per class since each negative class creates a different mosaic
+                img_base = os.path.splitext(img_filename)[0]
+                if collage_type == "vertical":
+                    pred_density_map_positive = self._load_density_map(f"{img_base}_{negative_class}_upper", class_name=None, is_gt=False)
+                    pred_density_map_negative = self._load_density_map(f"{img_base}_{negative_class}_lower", class_name=None, is_gt=False)
+                elif collage_type == "horizontal":
+                    pred_density_map_positive = self._load_density_map(f"{img_base}_{negative_class}_left", class_name=None, is_gt=False)
+                    pred_density_map_negative = self._load_density_map(f"{img_base}_{negative_class}_right", class_name=None, is_gt=False)
+                else:
+                    raise ValueError(f"Invalid collage_type: {collage_type}. Must be 'vertical' or 'horizontal'")
+                
+                # Check if density maps exist
+                has_density_maps = True
+                if gt_density_map_positive is None:
+                    has_density_maps = False
+                    missing_density_maps_count += 1
+                    print(f"Warning: Missing GT density map for {img_filename}")
+                
+                if pred_density_map_positive is None or pred_density_map_negative is None:
+                    has_density_maps = False
+                    missing_density_maps_count += 1
+                    print(f"Warning: Missing predicted density maps for {img_filename} vs {negative_class} ({collage_type})")
+                
+                if not has_density_maps:
+                    results.append({
+                        'Image Name': img_filename,
+                        'Positive Class': positive_class,
+                        'Negative Class': negative_class,
+                        'Total MAE': None,
+                        'Total TP': None,
+                        'Total FP': None,
+                        'GT Count': None,
+                        'Recall': None,
+                        'Precision': None,
+                        'F-score': None,
+                        'Num Partitions': None,
+                        'Has Density Maps': False
+                    })
+                    continue
+                
+                # Create GT density map for negative part (all zeros, same shape as positive)
+                gt_density_map_negative = np.zeros_like(gt_density_map_positive)
+                
+                # Handle shape mismatches - resize predicted to match GT
+                if gt_density_map_positive.shape != pred_density_map_positive.shape:
+                    pred_density_map_positive = self._resize_density_map(pred_density_map_positive, gt_density_map_positive.shape)
+                
+                if gt_density_map_negative.shape != pred_density_map_negative.shape:
+                    pred_density_map_negative = self._resize_density_map(pred_density_map_negative, gt_density_map_negative.shape)
+                
+                # Concatenate parts to create full mosaic based on collage type
+                if collage_type == "vertical":
+                    # Stack vertically: positive on top, negative on bottom
+                    gt_density_map = np.vstack([gt_density_map_positive, gt_density_map_negative])
+                    pred_density_map = np.vstack([pred_density_map_positive, pred_density_map_negative])
+                else:  # horizontal
+                    # Stack horizontally: positive on left, negative on right
+                    gt_density_map = np.hstack([gt_density_map_positive, gt_density_map_negative])
+                    pred_density_map = np.hstack([pred_density_map_positive, pred_density_map_negative])
+                
+                # Partition the density maps
+                gt_partitions = self._partition_density_map(gt_density_map, divisions)
+                pred_partitions = self._partition_density_map(pred_density_map, divisions)
+                
+                # Compute metrics for each partition
+                total_mae = 0
+                total_tp = 0
+                total_fp = 0
+                num_partitions = len(gt_partitions)
+                
+                for (gt_part, i, j), (pred_part, _, _) in zip(gt_partitions, pred_partitions):
+                    partition_metrics = self._compute_partition_metrics(gt_part, pred_part)
+                    total_mae += partition_metrics['mae']
+                    total_tp += partition_metrics['tp']
+                    total_fp += partition_metrics['fp']
+                
+                # Compute image-level metrics
+                gt_count_total = gt_density_map.sum()
+                
+                # Recall = TP / GT
+                if gt_count_total > 0:
+                    recall = total_tp / gt_count_total
+                else:
+                    recall = np.nan
+                
+                # Precision = TP / (TP + FP)
+                if (total_tp + total_fp) > 0:
+                    precision = total_tp / (total_tp + total_fp)
+                else:
+                    precision = np.nan
+                
+                # F-score = 2 * (Precision * Recall) / (Precision + Recall)
+                if precision > 0 and recall > 0:
+                    fscore = 2 * (precision * recall) / (precision + recall)
+                else:
+                    fscore = np.nan
+                
+                results.append({
+                    'Image Name': img_filename,
+                    'Positive Class': positive_class,
+                    'Negative Class': negative_class,
+                    'Total MAE': round(total_mae, self.metric_precision),
+                    'Total TP': round(total_tp, self.metric_precision),
+                    'Total FP': round(total_fp, self.metric_precision),
+                    'GT Count': round(gt_count_total, self.metric_precision),
+                    'Recall': round(recall, self.metric_precision) if not np.isnan(recall) else None,
+                    'Precision': round(precision, self.metric_precision) if not np.isnan(precision) else None,
+                    'F-score': round(fscore, self.metric_precision) if not np.isnan(fscore) else None,
+                    'Num Partitions': num_partitions,
+                    'Has Density Maps': True
+                })
+        
+        if missing_density_maps_count > 0:
+            print(f"\nTotal missing density maps for test2: {missing_density_maps_count}")
+        
+        return pd.DataFrame(results)
 
     def evaluate_test1_metrics(self):
         self.aggregation_df["Positive Pred Normalized by GT"] = self.aggregation_df["Positive Pred"] / self.aggregation_df["GT Count"]

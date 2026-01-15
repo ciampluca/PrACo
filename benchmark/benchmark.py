@@ -5,6 +5,7 @@ import pandas as pd
 from PIL import Image
 import torch
 import json
+import numpy as np
 
 PREDICTION_PRECISION = 2
 
@@ -32,8 +33,14 @@ class Benchmark:
         if not os.path.exists(self.benchmark_results_dir):
             os.makedirs(self.benchmark_results_dir)
         
-        if not os.path.exists(os.path.join(self.benchmark_results_dir, self.model_name)):
-            os.makedirs(os.path.join(self.benchmark_results_dir, self.model_name))
+        model_dir = os.path.join(self.benchmark_results_dir, self.model_name)
+        if not os.path.exists(model_dir):
+            os.makedirs(model_dir)
+        
+        # Create density maps directory for storing mosaic test density maps
+        self.density_maps_dir = os.path.join(model_dir, "density_maps")
+        if not os.path.exists(self.density_maps_dir):
+            os.makedirs(self.density_maps_dir)
 
         if img_class_dict is not None:
             self.img_class = img_class_dict.copy()
@@ -109,12 +116,21 @@ class Benchmark:
         random.seed(123)
         output_upper_file = os.path.join(self.benchmark_results_dir, self.model_name, output_upper_csv)
         output_lower_file = os.path.join(self.benchmark_results_dir, self.model_name, output_lower_csv)
+        output_mosaic_pairs_file = os.path.join(self.benchmark_results_dir, self.model_name, "mosaic_image_pairs.csv")
+        
         if os.path.exists(output_upper_file) and os.path.exists(output_lower_file) and not force:
             df_upper = pd.read_csv(output_upper_file, index_col=0)
             df_lower = pd.read_csv(output_lower_file, index_col=0)
         else:
             df_upper = pd.DataFrame(columns=self.model.split_classes[split], index=self.model.split_images[split])
             df_lower = pd.DataFrame(columns=self.model.split_classes[split], index=self.model.split_images[split])
+        
+        # DataFrame to store which images were paired in each mosaic
+        if os.path.exists(output_mosaic_pairs_file) and not force:
+            df_mosaic_pairs = pd.read_csv(output_mosaic_pairs_file, index_col=0)
+        else:
+            df_mosaic_pairs = pd.DataFrame(columns=self.model.split_classes[split], index=self.model.split_images[split])
+        
         random_images_list = []
 
         for idx, img_filename in enumerate(tqdm.tqdm(self.model.split_images[split])):
@@ -148,10 +164,25 @@ class Benchmark:
 
                 df_upper.at[img_filename, class_name] = round(pred_cnt_up, PREDICTION_PRECISION)
                 df_lower.at[img_filename, class_name] = round(pred_cnt_low, PREDICTION_PRECISION)
+                
+                # Store which image was used as the negative class (lower/right) part
+                df_mosaic_pairs.at[img_filename, class_name] = img2_filename
+                
+                # Save density maps for localized metrics computation
+                # Save per (image, class) pair since each negative class creates a different mosaic
+                img_base = os.path.splitext(img_filename)[0]
+                upper_density_path = os.path.join(self.density_maps_dir, f"{img_base}_{class_name}_upper.npy")
+                lower_density_path = os.path.join(self.density_maps_dir, f"{img_base}_{class_name}_lower.npy")
+                
+                # Convert to numpy and save
+                np.save(upper_density_path, upper_density.cpu().numpy())
+                np.save(lower_density_path, lower_density.cpu().numpy())
 
             if idx % 10 == 0:
                 df_upper.to_csv(output_upper_file)
                 df_lower.to_csv(output_lower_file)
+                df_mosaic_pairs.to_csv(output_mosaic_pairs_file)
                 
         df_upper.to_csv(output_upper_file)
         df_lower.to_csv(output_lower_file)
+        df_mosaic_pairs.to_csv(output_mosaic_pairs_file)
