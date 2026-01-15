@@ -75,4 +75,4 @@ class CLIPCountModel(BaseModel):
             density_map_tensor = density_map_tensor[0] / SCALE_FACTOR
             pred_cnt = torch.sum(density_map_tensor).item()
         
-        return pred_cnt, density_map_tensor
+        return pred_cnt, density_map_tensor.cpu()

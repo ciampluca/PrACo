@@ -135,7 +135,9 @@ class ZSCModel(BaseModel):
             
             density_map_tensor = self.model.counter(counting_feature)
         
+        if len(density_map_tensor.shape) == 4:
+            density_map_tensor = density_map_tensor.squeeze(0).squeeze(0)
         # Integrate over the density_map tensor
         pred_cnt = torch.sum(density_map_tensor).item()
         
-        return pred_cnt, density_map_tensor
+        return pred_cnt, density_map_tensor.cpu()

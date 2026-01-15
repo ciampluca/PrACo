@@ -422,4 +422,4 @@ class FixedPointPromptCountingModel(BaseModel):
                 #diff = torch.abs(prednum - tarnum)
                 #mae, mse = diff.mean(), (diff ** 2).mean()
 
-        return pred_cnt, density_map_tensor.squeeze()
+        return pred_cnt, density_map_tensor.squeeze().cpu()
