@@ -5,7 +5,7 @@ from benchmark.benchmark import Benchmark
 
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description="Run model benchmark tests.")
-parser.add_argument('--model', type=str, choices=['CounTX', 'CLIP-Count', 'TFPOC', 'VLCounter', 'DAVE', 'ZSC', 'PseCo', 'GroundingREC', 'CountGD', 'FixedPointPromptCounting'], required=True, 
+parser.add_argument('--model', type=str, required=True, 
                     help="Choose the model to use: Options: 'CounTX', 'CLIP-Count', 'TFPOC', 'VLCounter', 'DAVE', 'ZSC', 'PseCo', 'GroundingREC', 'CountGD', 'FixedPointPromptCounting'")
 parser.add_argument('--data_dir', type=str, default="./data", help="Directory containing the data files.")
 parser.add_argument('--img_directory', type=str, default='./data/images_384_VarV2', help="Directory containing the images.")
@@ -56,6 +56,9 @@ model = load_model(
     device=args.device
 )
 output_prefix = args.model
+if args.model in ["GroundingRECFSC"]:
+    print(f"Setting model name to {args.model} for GroundingRECFSC.")
+    model.model_name = args.model
 
 # Run benchmarks
 img_class_txt_path = os.path.join(data_dir, 'ImageClasses_FSC147.txt')

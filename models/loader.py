@@ -66,7 +66,14 @@ def load_model(model_name, img_directory, split_images, split_classes, load_filt
 
             return ZSCModel(img_directory, split_images, split_classes, model_ckpt=filtered_checkpoint, device=device, config=filtered_config, regressor_path=regressor_path, classes_list=classes_list, vae_feats_path=vae_feats_path)
         else:
-            return ZSCModel(img_directory, split_images, split_classes)
+            checkpoint = os.path.join(dirname_file, "ZSC/checkpoints/model_best_original_training.pth")
+            config = os.path.join(dirname_file, "ZSC/config/test.yaml")
+            regressor_path = os.path.join(dirname_file, "ZSC/checkpoints/ZSC_public_checkpoint_regressor.pth")
+            vae_feats_path = os.path.join(dirname_file, 'ZSC/checkpoints/bmnet+_ep3_epoch300_no_refiner/fsc_vae_feats.npy')
+            import json
+            classes_path = os.path.join(dirname_file, "../data/Split_Classes_FSC147.json")
+            classes_list = json.load(open(classes_path, 'r'))['test']
+            return ZSCModel(img_directory, split_images, split_classes, model_ckpt=checkpoint, device=device, config=config, regressor_path=regressor_path, classes_list=classes_list, vae_feats_path=vae_feats_path)
     elif model_name == 'PseCo':
         from models.PseCo_model import PseCoModel
         if load_filtered_checkpoints:
@@ -90,6 +97,13 @@ def load_model(model_name, img_directory, split_images, split_classes, load_filt
         else:
             checkpoint = os.path.join(dirname_file, "pretrained_models/groundingdino_swint_ogc.pth")
             return GroundingRECModel(img_directory, split_images, split_classes, model_ckpt=checkpoint, device=device)
+    elif model_name == 'GroundingRECFSC':
+        from models.GroundingREC_model import GroundingRECModel
+        if load_filtered_checkpoints:
+            raise NotImplementedError("Filtered checkpoints for GroundingRECFSC are not available.")
+        checkpoint = os.path.join(dirname_file, "pretrained_models/GroundingREC_model_original_training_only_FSC.pth")
+        print("Loading GroundingRECFSC with original training on FSC147 only.")
+        return GroundingRECModel(img_directory, split_images, split_classes, model_ckpt=checkpoint, device=device)
     elif model_name == 'CountGD':
         from models.countgd_model import CountGDModel
         if load_filtered_checkpoints:
