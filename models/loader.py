@@ -23,21 +23,24 @@ def load_model(model_name, img_directory, split_images, split_classes, load_filt
             filtered_checkpoint = os.path.join(dirname_file, "CLIPCount/checkpoints/clipcount_fsc147_filtered.ckpt")
             return CLIPCountModel(img_directory, split_images, split_classes, model_ckpt=filtered_checkpoint, device=device)
         else:
-            return CLIPCountModel(img_directory, split_images, split_classes, device=device)
+            checkpoint = os.path.join(dirname_file, "CLIPCount/checkpoints/clipcount_pretrained.ckpt")
+            return CLIPCountModel(img_directory, split_images, split_classes, model_ckpt=checkpoint, device=device)
     elif model_name == 'TFPOC':
         from models.TFPOC_model import ClipSAMModel
         if load_filtered_checkpoints:
             filtered_checkpoint = os.path.join(dirname_file, "TFPOC/pretrain/fsc_filtered_sam_vit_b_01ec64.pth")
             return ClipSAMModel(img_directory, split_images, split_classes, sam_checkpoint=filtered_checkpoint, device=device)
         else:
-            return ClipSAMModel(img_directory, split_images, split_classes)
+            checkpoint = os.path.join(dirname_file, "pretrained_models/sam_vit_b_01ec64.pth")
+            return ClipSAMModel(img_directory, split_images, split_classes, sam_checkpoint=checkpoint, device=device)
     elif model_name == 'VLCounter':
         from models.vlcounter_model import VLCounterModel
         if load_filtered_checkpoints:
             filtered_checkpoint = os.path.join(dirname_file, "VLCounter/checkpoints/fsc_filtered_vlcounter_283_best.pth")
             return VLCounterModel(img_directory, split_images, split_classes, model_ckpt=filtered_checkpoint, device=device)
         else:
-            return VLCounterModel(img_directory, split_images, split_classes)
+            checkpoint = os.path.join(dirname_file, "VLCounter/checkpoints/182_best.pth")
+            return VLCounterModel(img_directory, split_images, split_classes, model_ckpt=checkpoint, device=device)
     elif model_name == 'DAVE':
         from models.dave_model import DAVEModel
         if load_filtered_checkpoints:
@@ -75,14 +78,18 @@ def load_model(model_name, img_directory, split_images, split_classes, load_filt
                               cls_head_ckpt=filtered_cls_head_ckpt,
                               clip_text_prompt_ckpt=filtered_clip_text_prompt_ckpt, device=device)
         else:
-            return PseCoModel(img_directory, split_images, split_classes, device=device)
+            point_decoder_ckpt = os.path.join(dirname_file, "PseCo/checkpoints/point_decoder_vith.pth")
+            cls_head_ckpt = os.path.join(dirname_file, "PseCo/checkpoints/MLP_small_box_w1_zeroshot.tar")
+            clip_text_prompt_ckpt = os.path.join(dirname_file, "PseCo/checkpoints/clip_text_prompt.pth")
+            return PseCoModel(img_directory, split_images, split_classes, point_decoder_ckpt=point_decoder_ckpt, cls_head_ckpt=cls_head_ckpt, clip_text_prompt_ckpt=clip_text_prompt_ckpt, device=device)
     elif model_name == 'GroundingREC':
         from models.GroundingREC_model import GroundingRECModel
         if load_filtered_checkpoints:
             filtered_checkpoint = os.path.join(dirname_file, "pretrained_models/GroundingREC_FSC_filtered_model.pth")
             return GroundingRECModel(img_directory, split_images, split_classes, model_ckpt=filtered_checkpoint, device=device)
         else:
-            return GroundingRECModel(img_directory, split_images, split_classes, device=device)
+            checkpoint = os.path.join(dirname_file, "pretrained_models/groundingdino_swint_ogc.pth")
+            return GroundingRECModel(img_directory, split_images, split_classes, model_ckpt=checkpoint, device=device)
     elif model_name == 'CountGD':
         from models.countgd_model import CountGDModel
         if load_filtered_checkpoints:
