@@ -135,7 +135,7 @@ class COTR(nn.Module):
                 )
                 nn.init.normal_(self.objectness)
 
-    def clip_check_clusters(self, img, bboxes, category, img_name=None):
+    def clip_check_clusters(self, img, bboxes, category, img_name=None, take_min_score=False):
         bboxes = extend_bboxes(bboxes)
 
         C, H, W = img[0].shape
@@ -155,11 +155,27 @@ class COTR(nn.Module):
         img_ = img_ * mask_tensor
         img_ = img_[top:bottom + 1, left:right + 1]
         img_ = Image.fromarray(np.uint8(img_ * 255))
-        inputs = self.clip_processor(text=[category[0]], images=img_, return_tensors="pt", padding=True).to(img.device)
-        outputs = self.clip_model(**inputs)
-        logits_per_image = outputs.logits_per_image
-
-        return logits_per_image[0]
+        
+        # Handle both single class and multiple classes (multiclass scenario)
+        if isinstance(category, list):
+            # Multiple classes: check similarity against all and return max
+            max_score = float('-inf')
+            min_score = float('inf')
+            for class_name in category:
+                inputs = self.clip_processor(text=[class_name], images=img_, return_tensors="pt", padding=True).to(img.device)
+                outputs = self.clip_model(**inputs)
+                score = outputs.logits_per_image[0].item()
+                max_score = max(max_score, score)
+                min_score = min(min_score, score)
+            if take_min_score:
+                return torch.tensor(min_score, device=img.device)
+            else:
+                return torch.tensor(max_score, device=img.device)
+        else:
+            # Single class: original behavior
+            inputs = self.clip_processor(text=[category], images=img_, return_tensors="pt", padding=True).to(img.device)
+            outputs = self.clip_model(**inputs)
+            return outputs.logits_per_image[0]
 
     def clip_check_clusters_new(self, img, bboxes, category, img_name=None):
         bboxes = extend_bboxes(bboxes)
@@ -277,7 +293,7 @@ class COTR(nn.Module):
 
         return location
 
-    def predict_density_map(self, backbone_features, bboxes):
+    def predict_density_map(self, backbone_features, bboxes, save_gpu_memory=False):
         bs, _, bb_h, bb_w = backbone_features.size()
 
         # # prepare the encoder input
@@ -288,10 +304,14 @@ class COTR(nn.Module):
 
         # push through the encoder
         if self.num_encoder_layers > 0:
-            if backbone_features.shape[2] * backbone_features.shape[3] > 6000:
-                enc = self.encoder.cpu()
-                memory = enc(src.cpu(), pos_emb.cpu(), src_key_padding_mask=None, src_mask=None).to(
+            if save_gpu_memory and backbone_features.shape[2] * backbone_features.shape[3] > 6000:
+                # Temporarily move encoder to CPU for large feature maps to save GPU memory
+                original_device = next(self.encoder.parameters()).device
+                self.encoder.cpu()
+                memory = self.encoder(src.cpu(), pos_emb.cpu(), src_key_padding_mask=None, src_mask=None).to(
                     backbone_features.device)
+                # Move encoder back to original device
+                self.encoder.to(original_device)
             else:
                 memory = self.encoder(src, pos_emb, src_key_padding_mask=None, src_mask=None)
         else:
@@ -399,7 +419,7 @@ class COTR(nn.Module):
             outputs_R.append(_x)
         return correlation_maps, outputs_R, outputR
 
-    def forward(self, x_img, bboxes, name='', dmap=None, classes=None, positive_classes=None):
+    def forward(self, x_img, bboxes, name='', dmap=None, classes=None, positive_classes=None, save_gpu_memory=False, clip_threshold=0.85, take_min_score=False, per_cluster_thresh=False):
         #self.num_objects = bboxes.shape[1]
         backbone_features = self.backbone(x_img)
         bs, _, bb_h, bb_w = backbone_features.size()
@@ -409,7 +429,7 @@ class COTR(nn.Module):
         #####################
 
         # LOCA low-shot counter for density map prediction
-        correlation_maps, outputs_R, outputR = self.predict_density_map(backbone_features, bboxes)
+        correlation_maps, outputs_R, outputR = self.predict_density_map(backbone_features, bboxes, save_gpu_memory=save_gpu_memory)
 
         if self.det_train:
             tblr = self.box_predictor(self.upscale(backbone_features), self.upscale(correlation_maps))
@@ -490,15 +510,18 @@ class COTR(nn.Module):
                 pos_probs = []
                 for lab in labels:
                     mask = np.in1d(box_labels, lab).reshape(box_labels.shape)
-                    probs.append(self.clip_check_clusters(x_img, bboxes_p[mask], classes, img_name=name).item())
+                    probs.append(self.clip_check_clusters(x_img, bboxes_p[mask], classes, img_name=name, take_min_score=take_min_score).item())
 
                     # to estimate the max
                     if positive_classes is not None:
-                        pos_probs.append(self.clip_check_clusters(x_img, bboxes_p[mask], positive_classes, img_name=name).item())
+                        pos_probs.append(self.clip_check_clusters(x_img, bboxes_p[mask], positive_classes, img_name=name, take_min_score=take_min_score).item())
 
                     correct_clusters.append(lab)
-                thresh = max(pos_probs if len(pos_probs) > 0 else probs) * 0.85
-                correct = np.array(probs) > thresh
+                if not per_cluster_thresh:
+                    thresh = max(pos_probs if len(pos_probs) > 0 else probs) * clip_threshold
+                    correct = np.array(probs) > thresh
+                else:
+                    correct = np.array(probs) > np.array(pos_probs) * clip_threshold
                 correct_clusters = np.array(correct_clusters)[correct]
                 mask = np.in1d(box_labels, correct_clusters).reshape(box_labels.shape)
                 preds = generated_bboxes[mask]
