@@ -15,6 +15,7 @@ parser.add_argument('--gt_density_maps_dir', type=str, default="./data/gt_densit
 parser.add_argument('--collage_type', type=str, default="vertical", choices=['vertical', 'horizontal'], help="Type of mosaic collage for test2: 'vertical' (default) or 'horizontal'")
 parser.add_argument('--model', type=str, choices=['CounTX', 'CLIP-Count', 'TFPOC', 'VLCounter', 'DAVE', 'ZSC', 'PseCo', 'GroundingREC', 'CountGD', 'FixedPointPromptCounting', 'all'], 
                     help="Choose the model to use: Options: 'CounTX', 'CLIP-Count', 'TFPOC', 'VLCounter', 'DAVE', 'ZSC', 'PseCo', 'GroundingREC', 'CountGD', 'FixedPointPromptCounting', 'all'", default='all')
+parser.add_argument('--only_missings', default=False, action='store_true', help="If specified, compute statistics only for missing models in the output CSV")
 args = parser.parse_args()
 
 # Set up directories and file names based on the arguments
@@ -40,7 +41,12 @@ if os.path.exists(output_csv_path):
     prev_stats = pd.read_csv(output_csv_path, index_col=0)#, index_col='Model'
     stats.append(prev_stats)
 
-for model_name in tqdm(model_names, desc="Evaluating Models"):
+if args.model == "all" and args.only_missings:
+    existing_models = set(prev_stats['Model'].tolist())
+    model_names = [m for m in model_names if m not in existing_models]
+    print(f"Computing statistics only for missing models: {model_names}")
+
+for model_name in tqdm(model_names, desc="Evaluating Models", dynamic_ncols=True):
     m = "DAVE" if "DAVE" in model_name else model_name
     test_csv_filenames = {
         'test1': f'Inference_Test1_{m}_{args.split}.csv',
@@ -133,7 +139,7 @@ for model_name in tqdm(model_names, desc="Evaluating Models"):
 
     stats.append(statistics)
 
-# Combine statistics for all models
-stats = pd.concat(stats, axis=0, ignore_index=True)
-print(f"Saving statistics to {output_csv_path}")
-stats.to_csv(output_csv_path)
+    # Combine statistics for all models
+    stats_output_df = pd.concat(stats, axis=0, ignore_index=True)
+    print(f"Saving statistics to {output_csv_path}")
+    stats_output_df.to_csv(output_csv_path)

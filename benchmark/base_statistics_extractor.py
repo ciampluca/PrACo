@@ -44,7 +44,13 @@ class BaseStatisticsExtractor:
         if not os.path.exists(density_map_path):
             return None
         
-        return np.load(density_map_path)
+        loaded_density_map = np.load(density_map_path)
+        # if float 16, convert to float32
+        if loaded_density_map.dtype == np.float16:
+            loaded_density_map = loaded_density_map.astype(np.float32)
+        # pass the density map through a ReLU to remove negatives
+        loaded_density_map = np.maximum(loaded_density_map, 0)
+        return loaded_density_map
     
     def _partition_density_map(self, density_map, divisions):
         """

@@ -219,7 +219,7 @@ class StatisticsExtractor(BaseStatisticsExtractor):
         results = []
         missing_density_maps_count = 0
         
-        for img_filename in tqdm.tqdm(self.df_upper_test2.index):
+        for img_filename in tqdm.tqdm(self.df_upper_test2.index, dynamic_ncols=True):
             if self.imgs_to_exclude and img_filename in self.imgs_to_exclude:
                 continue
             
@@ -280,7 +280,15 @@ class StatisticsExtractor(BaseStatisticsExtractor):
                 
                 # Handle shape mismatches - resize predicted to match GT
                 if gt_density_map_positive.shape != pred_density_map_positive.shape:
-                    pred_density_map_positive = self._resize_density_map(pred_density_map_positive, gt_density_map_positive.shape)
+                    try:
+                        pred_density_map_positive = self._resize_density_map(pred_density_map_positive, gt_density_map_positive.shape)
+                    except Exception as e:
+                        if "data type not supported" in str(e):
+                            print(f"Data type: {pred_density_map_positive.dtype = }")
+                            print(f"GT Data type: {gt_density_map_positive.dtype = }")
+                            print(f"GT shape: {gt_density_map_positive.shape = }, Pred shape: {pred_density_map_positive.shape = }")
+                        print(f"Error resizing positive predicted density map for {img_filename}")
+                        raise e
                 
                 if gt_density_map_negative.shape != pred_density_map_negative.shape:
                     pred_density_map_negative = self._resize_density_map(pred_density_map_negative, gt_density_map_negative.shape)
