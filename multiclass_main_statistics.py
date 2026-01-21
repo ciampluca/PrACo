@@ -63,7 +63,7 @@ for model_name in tqdm(model_names, desc="Evaluating Models on Multiclass Benchm
 
     # Compute localized metrics if requested
     if args.compute_localized:
-        for divisions in [1, 2]:  # 2x2 and 4x4 partitions
+        for divisions in [1, 2, 3]:  # 2x2, 4x4, and 8x8 partitions
             localized_df = stats_extractor.compute_localized_metrics(
                 divisions=divisions, 
                 positive_classes_only=True

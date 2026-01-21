@@ -13,7 +13,7 @@ parser.add_argument('--split', type=str, default="test", help="Split to be consi
 parser.add_argument('--compute_localized', default=True, action='store_true', help="Compute localized metrics using density map partitions")
 parser.add_argument('--gt_density_maps_dir', type=str, default="./data/gt_density_maps_FSC", help="Directory containing ground truth density maps (optional)")
 parser.add_argument('--collage_type', type=str, default="vertical", choices=['vertical', 'horizontal'], help="Type of mosaic collage for test2: 'vertical' (default) or 'horizontal'")
-parser.add_argument('--model', type=str, choices=['CounTX', 'CLIP-Count', 'TFPOC', 'VLCounter', 'DAVE', 'ZSC', 'PseCo', 'GroundingREC', 'CountGD', 'FixedPointPromptCounting', 'all'], 
+parser.add_argument('--model', type=str, choices=['CounTX', 'CLIP-Count', 'TFPOC', 'VLCounter', 'DAVE', 'ZSC', 'PseCo', 'GroundingREC', "GroundingRECFSC", 'CountGD', 'FixedPointPromptCounting', 'all'], 
                     help="Choose the model to use: Options: 'CounTX', 'CLIP-Count', 'TFPOC', 'VLCounter', 'DAVE', 'ZSC', 'PseCo', 'GroundingREC', 'CountGD', 'FixedPointPromptCounting', 'all'", default='all')
 parser.add_argument('--only_missings', default=False, action='store_true', help="If specified, compute statistics only for missing models in the output CSV")
 args = parser.parse_args()
@@ -30,7 +30,7 @@ split_classes_file = "Split_Classes_FSC147.json"
 
 # List of model names to evaluate
 if args.model == 'all':
-    model_names = ["CounTX", "CLIP-Count", "VLCounter", "TFPOC", "DAVE", "ZSC", "PseCo", "GroundingREC", "CountGD", "FixedPointPromptCounting"]
+    model_names = ["CounTX", "CLIP-Count", "VLCounter", "TFPOC", "DAVE", "ZSC", "PseCo", "GroundingREC", "GroundingRECFSC", "CountGD", "FixedPointPromptCounting"]
 else:
     model_names = [args.model]
 
@@ -76,8 +76,8 @@ for model_name in tqdm(model_names, desc="Evaluating Models", dynamic_ncols=True
     if args.compute_localized:
         print(f"Computing localized metrics for {model_name}...")
         
-        for divisions in [1, 2]:  # 2x2 and 4x4 grids
-            n_partitions = (2 ** divisions) ** 2  # 4 or 16 partitions
+        for divisions in [1, 2, 3]:  # 2x2, 4x4, and 8x8 grids
+            n_partitions = (2 ** divisions) ** 2  # 4, 16, or 64 partitions
             
             # Compute localized metrics for test2
             localized_df = stats_extractor.compute_test2_localized_metrics(

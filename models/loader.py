@@ -95,7 +95,8 @@ def load_model(model_name, img_directory, split_images, split_classes, load_filt
             filtered_checkpoint = os.path.join(dirname_file, "pretrained_models/GroundingREC_FSC_filtered_model.pth")
             return GroundingRECModel(img_directory, split_images, split_classes, model_ckpt=filtered_checkpoint, device=device)
         else:
-            checkpoint = os.path.join(dirname_file, "pretrained_models/groundingdino_swint_ogc.pth")
+            #checkpoint = os.path.join(dirname_file, "pretrained_models/groundingdino_swint_ogc.pth")
+            checkpoint = os.path.join(dirname_file, "pretrained_models/GroundingREC_model_original_training_all_dataset.pth")
             return GroundingRECModel(img_directory, split_images, split_classes, model_ckpt=checkpoint, device=device)
     elif model_name == 'GroundingRECFSC':
         from models.GroundingREC_model import GroundingRECModel

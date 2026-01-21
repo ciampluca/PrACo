@@ -62,7 +62,7 @@ class Benchmark:
         else:
             df = pd.DataFrame(columns=self.model.split_classes[split], index=self.model.split_images[split])
 
-        for idx, img_filename in enumerate(tqdm.tqdm(self.model.split_images[split])):
+        for idx, img_filename in enumerate(tqdm.tqdm(self.model.split_images[split], dynamic_ncols=True)):
             if not df.loc[img_filename].isnull().values.all():
                 print(f"Skipping {img_filename} as all predictions are already made")
                 continue
@@ -133,7 +133,7 @@ class Benchmark:
         
         random_images_list = []
 
-        for idx, img_filename in enumerate(tqdm.tqdm(self.model.split_images[split])):
+        for idx, img_filename in enumerate(tqdm.tqdm(self.model.split_images[split], dynamic_ncols=True)):
             img = Image.open(os.path.join(self.model.img_directory, img_filename))
             img.load()
 
