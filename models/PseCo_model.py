@@ -135,8 +135,9 @@ class PseCoModel(BaseModel):
                 
             # Loop through each bb and add a small circle at its centroid to the density map
             for bb in final_boxes:
-                cX = int((bb[2]-bb[0]) / 2)
-                cY = int((bb[3]-bb[1]) / 2)
+                # Calculate centroid as the midpoint of the bounding box
+                cX = int((bb[0] + bb[2]) / 2)
+                cY = int((bb[1] + bb[3]) / 2)
                 
                 # Scale the centroid to the target density map size
                 cX_resized = int(cX / x_scale)
