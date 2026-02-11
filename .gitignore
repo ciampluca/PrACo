@@ -25,7 +25,7 @@ zero-shot-counting/
 
 *.safetensors
 
-data
+data/*.json
 pretrained_models
 benchmark_results
 .git.old
@@ -33,3 +33,9 @@ benchmark_results
 *.pdf
 
 .vscode
+
+data/multiclass-dataset/images
+multiclass_benchmark_results
+
+junk/
+plots/

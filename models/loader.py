@@ -3,7 +3,7 @@ IMPLEMENTED_MODELS = ['CounTX', 'CLIP-Count', 'TFPOC', 'VLCounter', 'DAVE', 'ZSC
 
 MULTICLASS_IMPLEMENTED_MODELS = IMPLEMENTED_MODELS.copy()
 
-def load_model(model_name, img_directory, split_images, split_classes, load_filtered_checkpoints=False, device=None):
+def load_model(model_name, img_directory, split_images, split_classes, load_filtered_checkpoints=False, device=None, split='test'):
     """Load and return the specified model."""
 
     import os
@@ -61,7 +61,7 @@ def load_model(model_name, img_directory, split_images, split_classes, load_filt
             vae_feats_path = os.path.join(dirname_file, 'ZSC/checkpoints/bmnet+_ep3_epoch300_no_refiner/fsc_vae_feats.npy')
             import json
             classes_path = os.path.join(dirname_file, "../data/multiclass-dataset/multiclass_split_classes.json")
-            classes_list = json.load(open(classes_path, 'r'))['test']
+            classes_list = json.load(open(classes_path, 'r'))[split]
             print(f"Using classes list of length {len(classes_list)} for ZSC-Count.")
 
             return ZSCModel(img_directory, split_images, split_classes, model_ckpt=filtered_checkpoint, device=device, config=filtered_config, regressor_path=regressor_path, classes_list=classes_list, vae_feats_path=vae_feats_path)
@@ -72,7 +72,7 @@ def load_model(model_name, img_directory, split_images, split_classes, load_filt
             vae_feats_path = os.path.join(dirname_file, 'ZSC/checkpoints/bmnet+_ep3_epoch300_no_refiner/fsc_vae_feats.npy')
             import json
             classes_path = os.path.join(dirname_file, "../data/Split_Classes_FSC147.json")
-            classes_list = json.load(open(classes_path, 'r'))['test']
+            classes_list = json.load(open(classes_path, 'r'))[split]
             return ZSCModel(img_directory, split_images, split_classes, model_ckpt=checkpoint, device=device, config=config, regressor_path=regressor_path, classes_list=classes_list, vae_feats_path=vae_feats_path)
     elif model_name == 'PseCo':
         from models.PseCo_model import PseCoModel

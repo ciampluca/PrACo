@@ -30,7 +30,7 @@ split_classes_file = "Split_Classes_FSC147.json"
 
 # List of model names to evaluate
 if args.model == 'all':
-    model_names = ["CounTX", "CLIP-Count", "VLCounter", "TFPOC", "DAVE", "ZSC", "PseCo", "GroundingREC", "GroundingRECFSC", "CountGD", "FixedPointPromptCounting"]
+    model_names = ["CounTX", "CLIP-Count", "VLCounter", "DAVE", "ZSC", "GroundingREC", "GroundingRECFSC", "CountGD", "PseCo", "TFPOC", "FixedPointPromptCounting"] 
 else:
     model_names = [args.model]
 
@@ -40,9 +40,11 @@ stats = []
 if os.path.exists(output_csv_path):
     prev_stats = pd.read_csv(output_csv_path, index_col=0)#, index_col='Model'
     stats.append(prev_stats)
+else:
+    prev_stats = None
 
 if args.model == "all" and args.only_missings:
-    existing_models = set(prev_stats['Model'].tolist())
+    existing_models = set(prev_stats['Model'].tolist() if prev_stats is not None else []) 
     model_names = [m for m in model_names if m not in existing_models]
     print(f"Computing statistics only for missing models: {model_names}")
 

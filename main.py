@@ -53,7 +53,8 @@ model = load_model(
     split_images=split_images,
     split_classes=split_classes,
     load_filtered_checkpoints=load_filtered_checkpoints,
-    device=args.device
+    device=args.device,
+    split=args.split
 )
 output_prefix = args.model
 if args.model in ["GroundingRECFSC"]:
