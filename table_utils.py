@@ -20,6 +20,11 @@ def model_name_to_table_model_name(model_name):
 
 models_ordering = ["ZSC", "CounTX", "CLIP-Count", "VLCounter", "TFPOC", "DAVE", "PseCo", "GroundingREC", "GroundingRECFSC", "UPC", "FixedPointPromptCounting", "CountGD"]
 
+def get_ordered_models_list():
+    tmp = models_ordering.copy()
+    tmp.remove("UPC")
+    return tmp
+
 models_colors = {
     "ZSC" : "blue",
     "CounTX" : "orange",
