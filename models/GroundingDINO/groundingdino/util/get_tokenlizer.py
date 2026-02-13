@@ -19,8 +19,8 @@ def get_tokenlizer(text_encoder_type):
 
 
 def get_pretrained_language_model(text_encoder_type):
-    if text_encoder_type == "bert-base-uncased":
+    if text_encoder_type.split('/')[-1] == "bert-base-uncased":
         return BertModel.from_pretrained(text_encoder_type)
-    if text_encoder_type == "roberta-base":
+    if text_encoder_type.split('/')[-1] == "roberta-base":
         return RobertaModel.from_pretrained(text_encoder_type)
     raise ValueError("Unknown text_encoder_type {}".format(text_encoder_type))

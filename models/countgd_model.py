@@ -100,8 +100,10 @@ def build_model_and_transforms(args):
     #scales = [480, 512, 544, 576, 608, 640, 672, 704, 736, 768, 800]
     #max_size=1333
 
+    cwd = os.path.dirname(__file__)
     cfg = SLConfig.fromfile(os.path.join(cwd, "CountGD/cfg_app.py"))
-    cfg.merge_from_dict({"text_encoder_type": os.path.join(cwd, "CountGD/checkpoints/bert-base-uncased")})
+    text_encoder_type = os.path.abspath(os.path.join(cwd, "CountGD/checkpoints/bert-base-uncased"))
+    cfg.merge_from_dict({"text_encoder_type": text_encoder_type})
     cfg_dict = cfg._cfg_dict.to_dict()
     args_vars = vars(args)
     for k, v in cfg_dict.items():

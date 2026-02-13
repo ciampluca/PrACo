@@ -394,10 +394,11 @@ class FixedPointPromptCountingModel(BaseModel):
         """
         return f"{text}"
 
-    def infer(self, img, text):
+    def infer(self, img, text, keep_initial_dims=False):
         """
         Implement the specific inference logic for the FixedPointPromptCounting model.
         """
+        initial_w, initial_h = img.size
         image, dotmap, boxmap, dotprompt, clip_mask = self.sample_builder.getSample(img, text)
 
         boxmap = boxmap.cuda(non_blocking=True)
@@ -421,5 +422,8 @@ class FixedPointPromptCountingModel(BaseModel):
                 #print(f"predicted num: ", prednum)
                 #diff = torch.abs(prednum - tarnum)
                 #mae, mse = diff.mean(), (diff ** 2).mean()
+
+        if keep_initial_dims:
+            density_map_tensor = F.interpolate(density_map_tensor, size=(initial_h, initial_w), mode='bilinear', align_corners=False)
 
         return pred_cnt, density_map_tensor.squeeze().cpu()
