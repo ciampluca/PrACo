@@ -5,7 +5,7 @@ This script generates density maps for each class in each image of the multiclas
 The density maps are created using a Gaussian filter, similar to FSC147 format.
 
 Usage:
-    python generate_density_maps.py [--output_dir DIR] [--save_png] [--png_dir DIR] [--sigma SIGMA] [--sigma_config FILE]
+    python generate_density_maps.py [--output_dir DIR] [--save_png] [--png_dir DIR] [--sigma SIGMA] [--sigma_config FILE] [--image IMAGE_ID]
 
 Arguments:
     --output_dir: Directory to save .npy density map files (default: density_maps)
@@ -13,6 +13,7 @@ Arguments:
     --png_dir: Directory to save PNG files (default: density_maps_png)
     --sigma: Default Gaussian filter sigma value (default: 1.0, used if no sigma_config)
     --sigma_config: JSON file with per-class sigma values (default: densitymap_sigmas_per_class.json)
+    --image: Generate density maps only for one image (e.g. mcac_176 or mcac_176.jpg)
     
 Example sigma config file format (densitymap_sigmas_per_class.json):
 {
@@ -70,7 +71,7 @@ def detect_and_crop_letterbox(img_array, threshold=240):
     return top, bottom
 
 
-def create_density_map(points, original_height, original_width, sigma=1.0, target_height=384):
+def create_density_map(points, original_height, original_width, sigma=1.0, target_min_dimension=384):
     """
     Create a density map from point annotations using Gaussian filtering.
     Points are assumed to be annotated at 384px height scale.
@@ -80,18 +81,48 @@ def create_density_map(points, original_height, original_width, sigma=1.0, targe
         original_height: Original image height (only used to calculate aspect ratio)
         original_width: Original image width (only used to calculate aspect ratio)
         sigma: Gaussian filter sigma value (can be scalar or tuple)
-        target_height: Target height for density map (default 384, matching annotation scale)
-    
+        target_min_dimension: Minimum dimension for density map (default 384, matching annotation scale)
+
     Returns:
-        density_map: numpy array of shape (target_height, target_width)
+        density_map: numpy array of shape (target_min_dimension, target_width)
     """
     # Calculate target dimensions maintaining aspect ratio of ORIGINAL image
     aspect_ratio = original_width / original_height
-    target_width = int(16 * round((target_height * aspect_ratio) / 16))  # Round to multiple of 16
     
     # Points are already at 384px height scale, no need to scale them
     # But we need to scale them to target dimensions if target_height != 384
-    scale_factor = target_height / 384.0
+    #scale_factor = min(original_width, original_height) / target_min_dimension
+
+    #target_height = target_min_dimension if original_height <= original_width else int(16 * round((target_min_dimension / aspect_ratio) / 16))  # Round to multiple of 16
+    #target_width = target_min_dimension if original_width <= original_height else int(16 * round((target_min_dimension * aspect_ratio) / 16))  # Round to multiple of 16
+    
+    
+    if original_height <= original_width:
+        target_height = target_min_dimension
+        target_width = int(16 * round((target_min_dimension * aspect_ratio) / 16))  # Round to multiple of 16
+    else:
+        target_width = target_min_dimension
+        target_height = int(16 * round((target_min_dimension / aspect_ratio) / 16))  # Round to multiple of 16
+
+
+    #target_width = int(16 * round((target_min_dimension * aspect_ratio) / 16))  # Round to multiple of 16
+    """
+    scale_factor_x = target_width / original_width
+    scale_factor_y = target_height / original_height
+    """
+    if original_height <= original_width:
+        # Immagine orizzontale (Landscape) o quadrata: l'altezza è stata fissata a 384
+        annot_height = 384.0
+        annot_width = original_width * (384.0 / original_height)
+    else:
+        # Immagine verticale (Portrait): la larghezza è stata fissata a 384
+        annot_width = 384.0
+        annot_height = original_height * (384.0 / original_width)
+
+    # 2. Calcoliamo i veri fattori di scala: da "spazio annotazione" a "spazio target"
+    scale_factor_x = target_width / annot_width
+    scale_factor_y = target_height / annot_height
+    
     
     # Initialize density map with zeros
     density_map = np.zeros((target_height, target_width), dtype='float32')
@@ -100,8 +131,8 @@ def create_density_map(points, original_height, original_width, sigma=1.0, targe
     for point in points:
         x, y = point
         # Scale points if target is not 384
-        x_scaled = x * scale_factor
-        y_scaled = y * scale_factor
+        x_scaled = x * scale_factor_x
+        y_scaled = y * scale_factor_y
         
         # Ensure coordinates are within bounds
         x_int = min(target_width - 1, max(0, int(round(x_scaled))))
@@ -175,8 +206,11 @@ def save_composite_density_map(density_maps_dict, output_path, image_path=None):
     if image_path and os.path.exists(image_path):
         img = Image.open(image_path)
         # Always resize image to match density map dimensions
+
+        print(f"DEBUG original image size: {img.size}, density map size: {(width, height)}")
         img = img.resize((width, height), Image.LANCZOS)
-        plt.imshow(img, alpha=0.5, origin='upper')
+        print(f"DEBUG resized image size: {img.size}")
+        
     
     # Create composite density map with different colors for each class
     composite = np.zeros((height, width, 4))  # RGBA
@@ -187,6 +221,8 @@ def save_composite_density_map(density_maps_dict, output_path, image_path=None):
             normalized = density_map / density_map.max()
         else:
             normalized = density_map
+
+        assert normalized.shape == (height, width), f"Density map shape {normalized.shape} does not match expected {(height, width)}"
         
         # Apply class-specific color
         color = colors[idx % len(colors)]
@@ -195,6 +231,10 @@ def save_composite_density_map(density_maps_dict, output_path, image_path=None):
         composite[:, :, 3] = np.maximum(composite[:, :, 3], normalized * 0.7)  # Alpha
     
     plt.imshow(composite, origin='upper')
+    plt.imshow(img, alpha=0.2, origin='upper', extent=(0, width, height, 0))  # Ensure image is behind the composite and aligned
+
+    # ensure that img and composite have the same dimensions and are aligned and one below the other in the plt:
+    assert img.size == (width, height), f"Image size {img.size} does not match expected {(width, height)}"
     
     # Create legend
     from matplotlib.patches import Patch
@@ -224,10 +264,12 @@ def main():
                         help='Default Gaussian filter sigma value (used if no sigma_config)')
     parser.add_argument('--sigma_config', type=str, default='densitymap_sigmas_per_class.json',
                         help='JSON file with per-class sigma values')
-    parser.add_argument('--target_height', type=int, default=384,
-                        help='Target height for density maps (default: 384, matching annotation scale)')
+    parser.add_argument('--target_min_dimension', type=int, default=384,
+                        help='Target minimum dimension for density maps (default: 384, matching annotation scale)')
     parser.add_argument('--data_dir', type=str, default='.',
                         help='Directory containing annotations.json and class_mapping.json')
+    parser.add_argument('--image', type=str, default=None,
+                        help='Generate maps only for one image ID (e.g. mcac_176 or mcac_176.jpg)')
     
     args = parser.parse_args()
     
@@ -245,6 +287,17 @@ def main():
     print(f"Loading annotations from {annotations_path}...")
     with open(annotations_path, 'r') as f:
         annotations = json.load(f)
+
+    # Optionally restrict generation to a single image.
+    if args.image:
+        requested_image = args.image if args.image.lower().endswith('.jpg') else f"{args.image}.jpg"
+        if requested_image not in annotations:
+            raise ValueError(
+                f"Requested image '{args.image}' not found in annotations. "
+                f"Expected key '{requested_image}'."
+            )
+        annotations = {requested_image: annotations[requested_image]}
+        print(f"Filtering to single image: {requested_image}")
     
     print(f"Loading class mapping from {class_mapping_path}...")
     with open(class_mapping_path, 'r') as f:
@@ -269,7 +322,7 @@ def main():
     print(f"\nDataset statistics:")
     print(f"  Total images: {len(annotations)}")
     print(f"  Total classes: {len(class_mapping)}")
-    print(f"  Target density map height: {args.target_height}px")
+    print(f"  Target density map minimum dimension: {args.target_min_dimension}px")
     print(f"  Default Gaussian sigma: {args.sigma}")
     if sigma_per_class:
         print(f"  Per-class sigmas loaded: {len(sigma_per_class)} classes")
@@ -326,7 +379,7 @@ def main():
             sigma = sigma_per_class.get(class_name, args.sigma)
             
             # Create density map (points are at 384px scale)
-            density_map = create_density_map(class_pts, height, width, sigma=sigma, target_height=args.target_height)
+            density_map = create_density_map(class_pts, height, width, sigma=sigma, target_min_dimension=args.target_min_dimension)
             
             # Save as .npy file
             img_base = os.path.splitext(img_name)[0]
@@ -350,7 +403,10 @@ def main():
             composite_filename = f"{img_base}_composite.png"
             composite_path = os.path.join(args.composite_png_dir, composite_filename)
             save_composite_density_map(density_maps_for_composite, composite_path, image_path=img_path)
+            print(f"Saved composite PNG for image '{img_name}' with {len(class_points)} classes")
         
+        print(f"DEBUG: num points in image '{img_name}': {len(points)}, classes: {len(class_points)}, density maps generated: {len(class_points)}")
+
         images_processed += 1
     
     # Print summary
