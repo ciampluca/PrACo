@@ -32,7 +32,7 @@ mcac_32.jpg	red currants,blackberries,raspberries
 mcac_33.jpg	blueberries,red currants,raspberries,blackberries
 mcac_34.jpg	grapes,cherries
 mcac_35.jpg	cherries,lemons
-mcac_36.jpg	cherries,lemons,strawberries
+mcac_36.jpg	cherries,strawberries,lemons
 mcac_37.jpg	cherries,lemons
 mcac_38.jpg	apples,pears
 mcac_39.jpg	bananas,apples,pears
