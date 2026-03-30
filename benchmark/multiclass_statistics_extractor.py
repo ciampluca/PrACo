@@ -419,13 +419,13 @@ class MulticlassStatisticsExtractor(BaseStatisticsExtractor):
                 # Compute image-level metrics from summed TP and FP
                 gt_count_total = gt_density_map.sum()
                 
-                # Recall = TP / GT
+                # Recall = TP / GT. If GT is zero, recall is undefined.
                 if gt_count_total > 0:
                     recall = total_tp / gt_count_total
                 else:
                     recall = np.nan
                 
-                # Precision = TP / (TP + FP)
+                # Precision = TP / (TP + FP). If TP+FP is zero, precision is undefined.
                 if (total_tp + total_fp) > 0:
                     precision = total_tp / (total_tp + total_fp)
                 else:
