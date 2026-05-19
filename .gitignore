@@ -23,6 +23,9 @@ zero-shot-counting/
 *.pth
 *.ckpt
 
+PseCo_fsc_filtered_cls_head-10000.tar
+MLP_small_box_w1_zeroshot.tar
+
 *.safetensors
 
 data/*.json
