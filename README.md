@@ -1,12 +1,13 @@
 # PrACo: Prompt-Aware Counting Benchmark
 
-This repository contains the code, evaluation scripts, and dataset links used for the PrACo benchmark family for prompt-aware, class-agnostic object counting. It now supports both the original PrACo benchmark (introduced in the WACV 2025 paper) and the extended multi-class benchmark suite PrACo++ (described in the extension paper available on arXiv).
+This repository contains the code, evaluation scripts, and dataset links used for the PrACo benchmark family for prompt-aware, class-agnostic object counting. It now supports both the original PrACo benchmark (introduced in the WACV 2025 paper) and the extended multi-class benchmark suite PrACo++.
 
 Papers:
+- Does it Really Count? Assessing Semantic Grounding in Text-Guided Class-Agnostic Counting - New 2026 [arXiv](https://arxiv.org/pdf/2605.02752)
 - Mind the Prompt: A Novel Benchmark for Prompt-based Class-Agnostic Counting — WACV 2025. [ArXiv](https://arxiv.org/abs/2409.15953)
-- Does it Really Count? Assessing Semantic Grounding in Text-Guided Class-Agnostic Counting - [arXiv](https://arxiv.org/pdf/2605.02752)
 
-![qualitative_mosaics-1](https://github.com/user-attachments/assets/4e0eca81-8038-432f-845f-b5f92cc06035)
+
+<img width="1101" height="393" alt="{5652AFE7-7E1F-4DEA-9756-289009F71330}" src="https://github.com/user-attachments/assets/016b4ef3-09ed-4d49-a5ce-5ccab14225a4" />
 
 ## Table of Contents
 
@@ -26,6 +27,8 @@ Papers:
 ## Overview
 
 PrACo evaluates prompt-aware, class-agnostic counting models and reveals failures where methods ignore the prompt or bias toward common classes. PrACo++ expands the benchmark to multi-class prompts and new metrics for measuring prompt adherence and semantic correctness in multi-class scenarios. Use this repository to reproduce the experiments in both the original and extension papers.
+
+![qualitative_mosaics-1](https://github.com/user-attachments/assets/4e0eca81-8038-432f-845f-b5f92cc06035)
 
 ## Repository Structure
 
@@ -64,11 +67,11 @@ Unzip into `data/images_384_VarV2` (or point the scripts to your image folder):
 unzip FSC147_384_V2.zip -d data/images_384_VarV2
 ```
 
-### 3. Download MUCCA / PrACo++ (multi-class benchmark)
+### 3. Download the Multi-Category Class-Agnostic Counting (MUCCA) benchmark
 
 The multi-class dataset MUCCA is available on Zenodo. Download the package and place it under `data/multiclass-dataset/` (or point your run commands to the folder):
 
-- MUCCA download: https://zenodo.org/records/19231375
+- MUCCA download: [Zenodo](https://zenodo.org/records/19231375)
 
 The MUCCA dataset contains:
 - multi-class image splits and annotations
@@ -79,7 +82,7 @@ Place the unpacked folder at `data/multiclass-dataset/` so that the multiclass s
 
 #### Preparing density maps (important)
 
-The Zenodo MUCCA dataset contains images and annotations (points + class IDs) but does not include precomputed density maps. If you want to run localized metrics or methods that require density maps, generate them from the annotations using the provided script.
+The MUCCA dataset contains images and annotations (points + class IDs) but does not include precomputed density maps. If you want to run localized metrics or methods that require density maps, generate them from the annotations using the provided script.
 
 The dataset already contains a helper script and documentation at `data/multiclass-dataset/generate_density_maps.py` and `data/multiclass-dataset/README_density_maps.md`.
 
@@ -167,7 +170,7 @@ The repository includes integration code or evaluation wrappers for the followin
 - CLIP-Count
 - CountGD
 - CountGD++
-- ClipSAM
+- GroundingREC
 - VLCounter
 - DAVE
 - ZSC
@@ -175,9 +178,12 @@ The repository includes integration code or evaluation wrappers for the followin
 - UPC
 - TFPOC
 
-### Testing a new model
+## 🤝 Contributing & Benchmarking Your Own Model
 
-If you want to add a model to the suite, add an evaluation wrapper under `models/` following the existing examples.
+We welcome contributions to the PrACo family! To evaluate your model on MUCCA:
+1. Create an adapter class inheriting from `BaseModel` inside `models/your_model/`.
+2. Implement the `infer` function ensuring it complies with the **strict fair-comparison protocols** (no privilege leakage from Ground Truth).
+3. Open a Pull Request! We aim to maintain an updated leaderboard.
 
 
 
