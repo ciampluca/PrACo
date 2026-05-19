@@ -53,3 +53,7 @@ data/multiclass-dataset/density_maps/
 data/multiclass-dataset/density_maps_composite_png/
 data/multiclass-dataset/density_maps_png/
 data/multiclass-dataset/stats/
+
+
+models/CountGDPlusPlus/checkpoints
+synthetic_exemplars/
