@@ -4,19 +4,24 @@ from .base_model import BaseModel
 import torchvision.ops as vision_ops
 import cv2
 
+import sys, os
+
+#groundingdino_path = os.path.join(os.path.dirname(__file__), 'GroundingDINO')
+#
+#if groundingdino_path not in sys.path:
+#    sys.path.append(groundingdino_path)
+
 from groundingdino.util.base_api import load_model, threshold
-import groundingdino.datasets.transforms as T
+from groundingdino.datasets import transforms as T
 
 
 class GroundingRECModel(BaseModel):
-    def __init__(self, img_directory, split_images, split_classes, model_ckpt='pretrained_models/GroundingREC_model_best.pth',):
+    def __init__(self, img_directory, split_images, split_classes, model_ckpt='pretrained_models/GroundingREC_model_best.pth', device="cuda" if torch.cuda.is_available() else "cpu"):
         super().__init__(img_directory, split_images, split_classes)
         self.model_name = "GroundingREC"
         self.CONFIG_PATH = "models/GroundingDINO/groundingdino/config/GroundingDINO_SwinT_OGC.py"
-        if torch.cuda.is_available():
-            self.device = torch.device('cuda')
-        else:
-            self.device = torch.device('cpu')
+        
+        self.device = torch.device(device)
         
         # Load model
         self.model = load_model(self.CONFIG_PATH, model_ckpt)

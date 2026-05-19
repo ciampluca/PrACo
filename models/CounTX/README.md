@@ -50,6 +50,37 @@ pip install .
 ```
 * This repository uses [`timm==0.3.2`](https://github.com/rwightman/pytorch-image-models), for which a [fix](https://github.com/rwightman/pytorch-image-models/issues/420#issuecomment-776459842) is needed to work with PyTorch 1.8.1+. This fix can be implemented by replacing the file timm/models/layers/helpers.py in the timm codebase with the file [helpers.py](https://github.com/niki-amini-naieni/CounTX/blob/main/helpers.py) provided in this repository.
 
+# CounTX Installation with H100 support (Python 3.8)
+
+## 1️⃣ Create the conda env
+
+```bash
+conda create --name countx-38 python=3.8 -y
+conda activate countx-38
+```
+
+## 2️⃣ Install PyTorch with CUDA 12.1 support
+
+```bash
+pip install torch==2.3.0+cu121 torchvision==0.18.0+cu121 torchaudio==2.3.0 --extra-index-url https://download.pytorch.org/whl/cu121
+```
+
+## 3️⃣ install required libraries
+
+```bash
+pip install timm==0.4.12
+pip install scipy imgaug
+```
+
+## 4️⃣ install openclip
+
+```bash
+git clone git@github.com:niki-amini-naieni/CounTX.git
+cd CounTX/open_clip
+pip install .
+cd ../..
+```
+
 ### CounTX Train
 
 To train the model, run the following command after activating the Anaconda environment set up in step 2 of [Preparation](#preparation). Make sure to change the directory and file names to the ones you set up in step 1 of [Preparation](#preparation). 

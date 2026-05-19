@@ -9,7 +9,7 @@ from .TFPOC.shi_segment_anything.automatic_mask_generator_text import SamAutomat
 from .TFPOC.utils import *
 
 class ClipSAMModel(BaseModel):
-    def __init__(self, img_directory, split_images, split_classes, device='cuda:0'):
+    def __init__(self, img_directory, split_images, split_classes, device='cuda:0', sam_checkpoint = "pretrained_models/sam_vit_b_01ec64.pth", model_type = "vit_b"):
         super().__init__(img_directory, split_images, split_classes)
         self.model_name = "TFPOC"
         self.device = device
@@ -17,8 +17,6 @@ class ClipSAMModel(BaseModel):
         self.clip_model, _ = clip.load("CS-ViT-B/16", device=device)
         self.clip_model.eval()
         # Load SAM model
-        sam_checkpoint = "pretrained_models/sam_vit_b_01ec64.pth"
-        model_type = "vit_b"
         self.sam = sam_model_registry[model_type](checkpoint=sam_checkpoint)
         self.sam.to(device=device)
         self.mask_generator = SamAutomaticMaskGenerator(model=self.sam)

@@ -5,14 +5,15 @@ from benchmark.benchmark import Benchmark
 
 # Parse command-line arguments
 parser = argparse.ArgumentParser(description="Run model benchmark tests.")
-parser.add_argument('--model', type=str, choices=['CounTX', 'CLIP-Count', 'TFPOC', 'VLCounter', 'DAVE', 'ZSC', 'PseCo', 'GroundingREC', 'CountGD', 'CountGDPlusPlus', 'FixedPointPromptCounting'], required=True, 
-                    help="Choose the model to use: Options: 'CounTX', 'CLIP-Count', 'TFPOC', 'VLCounter', 'DAVE', 'ZSC', 'PseCo', 'GroundingREC', 'CountGD', 'CountGDPlusPlus', 'FixedPointPromptCounting'")
-parser.add_argument('--data_dir', type=str, default="../CounTX/data/FSC/FSC_147", help="Directory containing the data files.")
-parser.add_argument('--img_directory', type=str, default='../CounTX/data/FSC/images_384_VarV2', help="Directory containing the images.")
+parser.add_argument('--model', type=str, required=True, 
+                    help="Choose the model to use: Options: 'CounTX', 'CLIP-Count', 'TFPOC', 'VLCounter', 'DAVE', 'ZSC', 'PseCo', 'GroundingREC', 'CountGD', 'CountGDPlusPlus','FixedPointPromptCounting'")
+parser.add_argument('--data_dir', type=str, default="./data", help="Directory containing the data files.")
+parser.add_argument('--img_directory', type=str, default='./data/images_384_VarV2', help="Directory containing the images.")
 parser.add_argument('--split_classes_file', type=str, default="Split_Classes_FSC147.json", help="Filename for the split classes JSON.")
 parser.add_argument('--split_images_file', type=str, default="Train_Test_Val_FSC_147.json", help="Filename for the split images JSON.")
 parser.add_argument('--img_class_txt', type=str, default="ImageClasses_FSC147.txt", help="Filename for the image classes TXT.")
 parser.add_argument('--split', type=str, default="test", help="Split to be considered")
+parser.add_argument('--device', type=str, default="cuda:0", help="Device to run the model on, e.g., 'cuda' or 'cpu'.")
 args = parser.parse_args()
 
 # Set up directories and file names based on the arguments
@@ -40,50 +41,25 @@ with open(os.path.join(data_dir, img_class_txt), 'r') as file:
             img_classes[img_name] = label
 
 # Select and initialize the model based on the argument
-if args.model == 'CounTX':
-    from models.countx_model import CounTXModel
-    model = CounTXModel(img_directory, split_images, split_classes)
-    output_prefix = 'CounTX'
-elif args.model == 'CLIP-Count':
-    from models.clipcount_model import CLIPCountModel
-    model = CLIPCountModel(img_directory, split_images, split_classes)
-    output_prefix = 'CLIP-Count'
-elif args.model == 'TFPOC':
-    from models.TFPOC_model import ClipSAMModel
-    model = ClipSAMModel(img_directory, split_images, split_classes)
-    output_prefix = 'TFPOC'
-elif args.model == 'VLCounter':
-    from models.vlcounter_model import VLCounterModel
-    model = VLCounterModel(img_directory, split_images, split_classes)
-    output_prefix = 'VLCounter'
-elif args.model == 'DAVE':
-    from models.dave_model import DAVEModel
-    model = DAVEModel(img_directory, split_images, split_classes)
-    output_prefix = 'DAVE'
-elif args.model == 'ZSC':
-    from models.ZSC_model import ZSCModel
-    model = ZSCModel(img_directory, split_images, split_classes)
-    output_prefix = 'ZSC'
-elif args.model == 'PseCo':
-    from models.PseCo_model import PseCoModel
-    model = PseCoModel(img_directory, split_images, split_classes)
-    output_prefix = 'PseCo'
-elif args.model == 'GroundingREC':
-    from models.GroundingREC_model import GroundingRECModel
-    model = GroundingRECModel(img_directory, split_images, split_classes)
-    output_prefix = 'GroundingREC'
-elif args.model == 'CountGD':
-    from models.countgd_model import CountGDModel
-    model = CountGDModel(img_directory, split_images, split_classes)
-    output_prefix = 'CountGD'
-elif args.model == 'CountGDPlusPlus':
-    from models.countgdplusplus_model import CountGDPlusPlusModel
-    model = CountGDPlusPlusModel(img_directory, split_images, split_classes)
-    output_prefix = 'CountGDPlusPlus'
-elif args.model == 'FixedPointPromptCounting':
-    from models.fixedpointpromptcounting_model import FixedPointPromptCountingModel
-    model = FixedPointPromptCountingModel(img_directory, split_images, split_classes)
-    output_prefix = 'FixedPointPromptCounting'
+from models.loader import load_model
+
+print(f"Loading model: {args.model}")
+load_filtered_checkpoints = False
+if load_filtered_checkpoints:
+    print("[WARNING] Loading filtered checkpoints for model initialization. [This may affect performance.]")
+model = load_model(
+    model_name=args.model,
+    img_directory=img_directory,
+    split_images=split_images,
+    split_classes=split_classes,
+    load_filtered_checkpoints=load_filtered_checkpoints,
+    device=args.device,
+    split=args.split
+)
+output_prefix = args.model
+if args.model in ["GroundingRECFSC"]:
+    print(f"Setting model name to {args.model} for GroundingRECFSC.")
+    model.model_name = args.model
 
 # Run benchmarks
 img_class_txt_path = os.path.join(data_dir, 'ImageClasses_FSC147.txt')

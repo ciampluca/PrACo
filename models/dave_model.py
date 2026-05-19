@@ -12,12 +12,12 @@ SCALE_FACTOR = 60
 
 
 class DAVEModel(BaseModel):
-    def __init__(self, img_directory, split_images, split_classes, model_ckpt='pretrained_models/DAVE_0_shot.pth', feat_comp_ckpt="pretrained_models/verification.pth"):
+    def __init__(self, img_directory, split_images, split_classes, model_ckpt='models/DAVE/pretrained/DAVE_0_shot.pth', feat_comp_ckpt="models/DAVE/pretrained/verification.pth", device = "cuda:0"):
         super().__init__(img_directory, split_images, split_classes)
 
-        gpu = 0
-        torch.cuda.set_device(gpu)
-        self.device = torch.device(gpu)
+        torch.cuda.set_device(device)
+        gpu = torch.cuda.current_device()
+        self.device = torch.device(f"cuda:{gpu}")
 
         args = DotMap()
         args.image_size = 512
@@ -111,12 +111,25 @@ class DAVEModel(BaseModel):
         return f"{text}"
 
 
-    def infer(self, img, text, text_positive=None, resized_img_size=512):
+    def infer(self, img, text, text_positive=None, resized_img_size=512, save_gpu_memory=False, clip_threshold=0.85, take_min_score=False, per_cluster_thresh=False, return_bboxes=False):
         """
         Implement the specific inference logic for the DAVE model.
+        - img: PIL Image
+        - text: string (class prompt)
+        - text_positive: string or list of strings (positive class prompts)
+        - resized_img_size: int (size to which the image is resized)
+        - save_gpu_memory: bool (whether to use memory-saving techniques)
+        - clip_threshold: float (threshold for CLIP filtering)
+        - take_min_score: bool (whether to use the minimum score among positive classes)
+        - per_cluster_thresh: bool (whether to use per-cluster thresholds)
+
+        CLIP threshold is used to filter out low-confidence detections.
+        If you provide a higher threshold, only high-confidence detections will be considered.
+        In the case of multiple positive classes, the highest confidence among them is used.
         """
         w, h = img.size
         img = self.img_trans(img)
+        #print(f"DEBUG - Original size: ({w}, {h}), Transformed size: {img.shape[1:]}")
         img = img.unsqueeze(0)
         img = img.to(self.device)
         bboxes = None
@@ -130,12 +143,25 @@ class DAVEModel(BaseModel):
         # for name, buffer in self.model.named_buffers():
         #     if buffer.device != torch.device('cuda:0'):
         #         print(f'Buffer {name} is on {buffer.device}')
-        if any([p.device != torch.device('cuda:0') for p in self.model.parameters()]):
-            print('WARNING: Model parameters are not on the correct device. Moving to cuda:0')
+        if any([p.device != self.device for p in self.model.parameters()]):
+            print(f'WARNING: Model parameters are not on the correct device. Moving to {self.device}')
+            # print which parameters are on the wrong device
+            for name, param in self.model.named_parameters():
+                if param.device != self.device:
+                    print(f'Parameter {name} is on {param.device}')
             self.model.to(self.device)
 
-        with torch.no_grad():
-            out, aux, tblr, boxes_pred = self.model(img, bboxes, img_name, classes=[text], positive_classes=[text_positive] if text_positive is not None else None)
+        text_positive_list = ([text_positive] if isinstance(text_positive, str) else text_positive) if text_positive is not None else None
+
+        try:
+            with torch.no_grad():
+                out, aux, tblr, boxes_pred = self.model(img, bboxes, img_name, classes=[text], positive_classes=text_positive_list, save_gpu_memory=save_gpu_memory, clip_threshold=clip_threshold, take_min_score=take_min_score, per_cluster_thresh=per_cluster_thresh)
+        except (IndexError, RuntimeError) as e:
+            # Handle edge cases where DAVE fails (e.g., no detections, malformed boxes)
+            print(f"DAVE inference error: {e}. Returning zero count.")
+            # Return zero count and empty density map
+            density_map_tensor = torch.zeros((self.resized_img_size, self.resized_img_size))
+            return 0.0, density_map_tensor
 
         boxes_predicted = boxes_pred.box
         scale_y = min(1, 50 / (boxes_predicted[:, 2] - boxes_predicted[:, 0]).mean())
@@ -165,15 +191,27 @@ class DAVEModel(BaseModel):
             img_resized = resize_(img)
             shape = img_resized.shape[1:]
         if scale_x != 1.0 or scale_y != 1.0:
-            with torch.no_grad():
-                out, aux, tblr, boxes_pred = self.model(img_resized, bboxes, img_name, classes=[text], positive_classes=[text_positive] if text_positive is not None else None)
+            try:
+                with torch.no_grad():
+                    out, aux, tblr, boxes_pred = self.model(img_resized, bboxes, img_name, classes=[text], positive_classes=text_positive_list, save_gpu_memory=save_gpu_memory, clip_threshold=clip_threshold, take_min_score=take_min_score, per_cluster_thresh=per_cluster_thresh)
+                    boxes_predicted = boxes_pred.box
+            except (IndexError, RuntimeError) as e:
+                # Handle edge cases where DAVE fails on rescaled image
+                print(f"DAVE inference error on rescaled image: {e}. Using original inference result.")
+                # Continue with the original 'out' from the first inference
 
+        ## DAVE can produce negative density values for negative detections
+        ## Only count positive values (objects belonging to the query class)
+        #out_clamped = torch.clamp(out, min=0.0)
+        
         pred_cnt = torch.sum(out).item()
 
         out = out.cpu()
         density_map_tensor = out.squeeze()
 
         # torch.cuda.empty_cache()
+        print(f"DEBUG count: {pred_cnt} len(boxes_pred): {len(boxes_predicted)} text: {text} -- text_positive: {text_positive}")
 
-
+        if return_bboxes:
+            return pred_cnt, density_map_tensor, boxes_predicted.cpu()
         return pred_cnt, density_map_tensor

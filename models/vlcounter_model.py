@@ -15,7 +15,7 @@ SCALE_FACTOR = 60
 
 
 class VLCounterModel(BaseModel):
-    def __init__(self, img_directory, split_images, split_classes, model_ckpt='pretrained_models/182_best.pth', config="models/VLCounter/config_files/FSC.yaml"):
+    def __init__(self, img_directory, split_images, split_classes, model_ckpt='pretrained_models/182_best.pth', config="models/VLCounter/config_files/FSC.yaml", device="cuda"):
         super().__init__(img_directory, split_images, split_classes)
 
         with open(config, 'r') as f:
@@ -27,8 +27,8 @@ class VLCounterModel(BaseModel):
         args.patch_size = 16
 
         self.model_name = "VLCounter"
-        self.model = Counter(args=args).cuda()
-        checkpoint = torch.load(model_ckpt)
+        self.model = Counter(args=args).to(device)
+        checkpoint = torch.load(model_ckpt, map_location=device)
         self.model.load_state_dict(checkpoint['state_dict'])
         self.model.eval()
 

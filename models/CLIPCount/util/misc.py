@@ -24,6 +24,8 @@ from torch import inf
 import numpy as np
 import random
 
+from PIL import Image
+
 class SmoothedValue(object):
     """Track a series of values and provide access to smoothed values over a
     window or the global series average.
@@ -417,11 +419,28 @@ def sliding_window(image, window_size = (384, 384), stride = 128):
         image = image.permute(1, 2, 0)
         image = image.detach().cpu().numpy()
     image = np.pad(image, ((0, 0), (0, stride - image.shape[1] % stride), (0, 0)), 'constant')
-    h, w, _ = image.shape
-    assert h == 384, "FSC-147 assume image height is 384."
+    
+    H, W, C = image.shape 
+    target_H, target_W = window_size # Resize height to target_H keeping aspect ratio 
+    if H != target_H: 
+        print("[sliding_window()] Resizing height from {} to {}".format(H, target_H))
+        scale = target_H / H
+        new_W = max(int(W * scale), target_W)
+        img_pil = Image.fromarray((image*255).astype(np.uint8))
+        img_pil = img_pil.resize((new_W, target_H))
+        image = np.array(img_pil)
+        H, W, C = image.shape 
+    
+    # Pad width if smaller than window
+    if W < target_W:
+        print("[sliding_window()] Padding width from {} to {}".format(W, target_W))
+        pad_w = target_W - W 
+        image = np.pad(image, ((0,0),(0,pad_w),(0,0)), mode='constant') 
+        W = image.shape[1]
+
     patches = []
     intervals = []
-    for i in range(0, w - window_size[1] + 1, stride):
+    for i in range(0, W - window_size[1] + 1, stride):
         patch = image[:, i:i + window_size[1], :]
         patches.append(patch)
         intervals.append([i, i + window_size[1]])

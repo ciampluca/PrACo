@@ -10,9 +10,9 @@ SCALE_FACTOR = 60
 
 class CLIPCountModel(BaseModel):
     
-    def __init__(self, img_directory, split_images, split_classes, model_ckpt='pretrained_models/clipcount_pretrained.ckpt'):
+    def __init__(self, img_directory, split_images, split_classes, model_ckpt='pretrained_models/clipcount_pretrained.ckpt', device='cuda'):
         super().__init__(img_directory, split_images, split_classes)
-        self.model = run.Model.load_from_checkpoint(model_ckpt, strict=False)
+        self.model = run.Model.load_from_checkpoint(model_ckpt, map_location=device, strict=False)
         self.model.eval()
         self.model_name = "CLIP-Count"
         
@@ -34,8 +34,20 @@ class CLIPCountModel(BaseModel):
         with torch.no_grad():
             # Reshape height to 384, keep aspect ratio
             img_tensor = torch.from_numpy(img).permute(2, 0, 1).unsqueeze(0).cuda()
-            resized_image = TF.resize(img_tensor, (384))
+            # to ensure that the height is 384, we resize the image accordingly
+            cur_w, cur_h = img_tensor.shape[3], img_tensor.shape[2]
+            new_w = int((384 / cur_h) * cur_w)
+            resized_image = TF.resize(img_tensor, (384, new_w))
+
+            if new_w < 384:
+                # Pad the image to have at least 384 width
+                pad_amount = 384 - new_w
+                resized_image = TF.pad(resized_image, (0, 0, pad_amount, 0), fill=0)
+                # the padding is applied to the right side of the image
             
+            assert resized_image.shape[3] >= 384, "Width after resizing must be at least 384 pixels. Got {}".format(resized_image.shape[3])
+            
+
             resized_image = resized_image.float() / 255.0
             resized_image = torch.clamp(resized_image, 0, 1)
             text = [text]
@@ -55,8 +67,12 @@ class CLIPCountModel(BaseModel):
                 
                 # Crop to original width
                 density_map_tensor = density_map_tensor[:, :, :raw_w]
+
+                if raw_w > new_w:
+                    # handle the case where we padded the image because its width was less than 384
+                    density_map_tensor = density_map_tensor[:, :, :new_w]
             
             density_map_tensor = density_map_tensor[0] / SCALE_FACTOR
             pred_cnt = torch.sum(density_map_tensor).item()
         
-        return pred_cnt, density_map_tensor
+        return pred_cnt, density_map_tensor.cpu()
