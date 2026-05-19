@@ -39,3 +39,9 @@ multiclass_benchmark_results
 
 junk/
 plots/
+
+export-multiclass-dataset/
+export-multiclass-dataset.zip
+
+data/gt_density_maps_FSC
+data/images_384_VarV2
