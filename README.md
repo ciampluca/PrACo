@@ -28,12 +28,17 @@ The repository is organized as follows:
 - **`benchmark/`**: Scripts for evaluating the models on the PrACo dataset.
 - **`models/`**: Contains the model implementations for:
   - `CounTX`
+  - `CountGD`
   - `CLIP-Count`
   - `TFPOC`
   - `VLCounter`
   - `DAVE`
   - `ZSC`
   - `PseCo`
+  - `UPC`
+  - `TFPOC`
+  - `CountGD++`
+
   
 - **`main.py`**: Main script to run the benchmark for a selected model.
 - **`main_statistics.py`**: Script for computing and compiling benchmark statistics across different models.
@@ -82,6 +87,7 @@ Download links are provided below.:
 - **PseCo Weights:** [Download Link](https://huggingface.co/Hzzone/PseCo/tree/main/data/fsc147)
   - Download clip_text_prompt.pth
   - Download MLP_small_box_w1_zeroshot.tar and point_decoder_vith.pth from checkpoints folder
+- **CountGD++ Weights:** [Download Link](https://drive.google.com/file/d/1j6N22TtKu2NVcKpgfrf-sJHGeLDqs9hs/view?usp=sharing). Place the model weights in the folder `models/CountGDPlusPlus/checkpoints`. Follow the [CountGD++ setup readme.md](models/CountGDPlusPlus/README.md) for the details on how to set up the environment.
 
 
 ### 4. Download Model-specific Files
@@ -116,10 +122,14 @@ python main_statistics.py --data_dir <DATA_DIR> --split <SPLIT_NAME> --models <M
 ## Available Models
 - **CounTX**
 - **CLIP-Count**
+- **CountGD**
 - **ClipSAM**
 - **VLCounter**
 - **DAVE**
 - **ZSC**
 - **PseCo**
+- **UPC**
+- **TFPOC**
+- **CountGD++**
 
 
