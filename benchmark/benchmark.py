@@ -48,7 +48,14 @@ class Benchmark:
                         # img_id = img_name.split(".")[0]
                         self.img_class[img_name] = label
 
-    def run_negative_label_test(self, output_csv, split="test", force=False):
+    def run_negative_label_test(self, img_classes, output_csv, split="test", force=False):
+        def extract_random_img(class_name):
+            filtered_img_classes = [key for key, value in img_classes.items() if value == class_name]
+            img_filename = random.choice(filtered_img_classes)
+            return img_filename
+
+        random.seed(123)
+        
         output_file = os.path.join(self.benchmark_results_dir, self.model_name, output_csv)
         if os.path.exists(output_file) and not force:
             df = pd.read_csv(output_file, index_col=0)
@@ -64,12 +71,31 @@ class Benchmark:
             img.load()
 
             for class_name in self.model.split_classes[split]:
-                prompt = self.model.get_text_prompt(class_name)
                 if 'DAVE' in self.model_name:
+                    prompt = self.model.get_text_prompt(class_name)
                     positive_class = self.img_class[img_filename]
                     positive_prompt = self.model.get_text_prompt(positive_class)
                     pred_cnt, _ = self.model.infer(img, text=prompt, text_positive=positive_prompt)
+                elif 'CountGDPlusPlus' in self.model_name:
+                    # Get the synthetic exemplars generated using only text
+                    pos_exemplars = [self.model.synthetic_exemplars[img_filename]] # Add a dimension for number of exemplars
+                    img2_filename = extract_random_img(class_name)
+                    neg_exemplars = [self.model.synthetic_exemplars[img2_filename]]
+                    pos_exemplar_img = Image.open(os.path.join(self.model.synthetic_exemplars_folder, img_filename)).convert("RGB")
+                    neg_exemplar_img = Image.open(os.path.join(self.model.synthetic_exemplars_folder, img2_filename)).convert("RGB")
+                    negative_prompt = self.model.get_text_prompt(class_name, img2_filename)
+                    positive_class = self.img_class[img_filename]
+                    positive_prompt = self.model.get_text_prompt(positive_class, img_filename)
+                    if positive_class == class_name:                        
+                        print("Counting " + positive_prompt + " with no negative, same class as in the image")
+                        pred_cnt, _ = self.model.infer(img, positive_prompt, None, pos_exemplar_img, None, pos_exemplars, None)
+                        print("Pred Count: " + str(pred_cnt))
+                    else:
+                        print("Counting " + negative_prompt + " in an image with " + positive_prompt)
+                        pred_cnt, _ = self.model.infer(img, negative_prompt, positive_prompt, neg_exemplar_img, pos_exemplar_img, neg_exemplars, pos_exemplars) # Negatives and positives are switched for negative label test
+                        print("Pred Count: " + str(pred_cnt))
                 else:
+                    prompt = self.model.get_text_prompt(class_name)
                     pred_cnt, _ = self.model.infer(img, prompt)
                 df.at[img_filename, class_name] = round(pred_cnt, PREDICTION_PRECISION)
 
@@ -136,8 +162,18 @@ class Benchmark:
                 img2.load()
                 collage = create_collage(img, img2, type="vertical")
 
-                prompt = self.model.get_text_prompt(img_classes[img_filename])
-                _, density_map_tensor = self.model.infer(collage, prompt)
+                if 'CountGDPlusPlus' in self.model_name:
+                    # Get the synthetic exemplars generated with only text
+                    pos_exemplars = [self.model.synthetic_exemplars[img_filename]] # Add a dimension for number of exemplars
+                    neg_exemplars = [self.model.synthetic_exemplars[img2_filename]]
+                    pos_exemplar_img = Image.open(os.path.join(self.model.synthetic_exemplars_folder, img_filename)).convert("RGB")
+                    neg_exemplar_img = Image.open(os.path.join(self.model.synthetic_exemplars_folder, img2_filename)).convert("RGB")
+                    pos_prompt = self.model.get_text_prompt(img_classes[img_filename], img_filename)
+                    neg_prompt = self.model.get_text_prompt(class_name, img2_filename)
+                    _, density_map_tensor = self.model.infer(collage, pos_prompt, neg_prompt, pos_exemplar_img, neg_exemplar_img, pos_exemplars, neg_exemplars)
+                else:
+                    prompt = self.model.get_text_prompt(img_classes[img_filename])
+                    _, density_map_tensor = self.model.infer(collage, prompt)
 
                 half_height = density_map_tensor.size(dim=0)//2
                 upper_density = density_map_tensor[:half_height, :]
@@ -145,6 +181,8 @@ class Benchmark:
 
                 pred_cnt_up = torch.sum(upper_density).item()
                 pred_cnt_low = torch.sum(lower_density).item()
+                print("Pos Count: " + str(pred_cnt_up))
+                print("Neg Count: " + str(pred_cnt_low))
 
                 df_upper.at[img_filename, class_name] = round(pred_cnt_up, PREDICTION_PRECISION)
                 df_lower.at[img_filename, class_name] = round(pred_cnt_low, PREDICTION_PRECISION)
