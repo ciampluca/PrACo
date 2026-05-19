@@ -30,7 +30,7 @@ The repository is organized as follows:
   - `CounTX`
   - `CountGD`
   - `CLIP-Count`
-  - `TFPOC`
+  - `GroundingREC`
   - `VLCounter`
   - `DAVE`
   - `ZSC`
@@ -123,7 +123,7 @@ python main_statistics.py --data_dir <DATA_DIR> --split <SPLIT_NAME> --models <M
 - **CounTX**
 - **CLIP-Count**
 - **CountGD**
-- **ClipSAM**
+- **GroundingREC**
 - **VLCounter**
 - **DAVE**
 - **ZSC**
