@@ -23,9 +23,12 @@ zero-shot-counting/
 *.pth
 *.ckpt
 
+PseCo_fsc_filtered_cls_head-10000.tar
+MLP_small_box_w1_zeroshot.tar
+
 *.safetensors
 
-data
+data/*.json
 pretrained_models
 benchmark_results
 .git.old
@@ -33,3 +36,20 @@ benchmark_results
 *.pdf
 
 .vscode
+
+data/multiclass-dataset/images
+multiclass_benchmark_results
+
+junk/
+plots/
+
+export-multiclass-dataset/
+export-multiclass-dataset.zip
+
+data/gt_density_maps_FSC
+data/images_384_VarV2
+
+data/multiclass-dataset/density_maps/
+data/multiclass-dataset/density_maps_composite_png/
+data/multiclass-dataset/density_maps_png/
+data/multiclass-dataset/stats/
