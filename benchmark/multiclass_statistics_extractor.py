@@ -395,6 +395,7 @@ class MulticlassStatisticsExtractor(BaseStatisticsExtractor):
                             'Recall': None,
                             'Precision': None,
                             'F-score': None,
+                            'F-score-paper': None,
                             'Num Partitions': None,
                             'Has Density Maps': False
                         })
@@ -408,6 +409,7 @@ class MulticlassStatisticsExtractor(BaseStatisticsExtractor):
                 total_mae = 0
                 total_tp = 0
                 total_fp = 0
+                total_fn = 0
                 num_partitions = len(gt_partitions)
                 
                 for (gt_part, i, j), (pred_part, _, _) in zip(gt_partitions, pred_partitions):
@@ -418,6 +420,8 @@ class MulticlassStatisticsExtractor(BaseStatisticsExtractor):
                 
                 # Compute image-level metrics from summed TP and FP
                 gt_count_total = gt_density_map.sum()
+
+                total_fn = gt_count_total - total_tp  # False Negatives = GT - TP
                 
                 # Recall = TP / GT. If GT is zero, recall is undefined.
                 if gt_count_total > 0:
@@ -434,8 +438,11 @@ class MulticlassStatisticsExtractor(BaseStatisticsExtractor):
                 # F-score = 2 * (Precision * Recall) / (Precision + Recall)
                 if precision > 0 and recall > 0:
                     fscore = 2 * (precision * recall) / (precision + recall)
+                    fscore_paper = 2 * total_tp / (2 * total_tp + total_fp + total_fn)  # As defined in the paper
                 else:
                     fscore = np.nan
+                    fscore_paper = np.nan
+                
                 
                 results.append({
                     'Image Name': img_filename,
@@ -448,6 +455,7 @@ class MulticlassStatisticsExtractor(BaseStatisticsExtractor):
                     'Recall': round(recall, self.metric_precision) if not np.isnan(recall) else None,
                     'Precision': round(precision, self.metric_precision) if not np.isnan(precision) else None,
                     'F-score': round(fscore, self.metric_precision) if not np.isnan(fscore) else None,
+                    'F-score-paper': round(fscore_paper, self.metric_precision) if not np.isnan(fscore_paper) else None,
                     'Num Partitions': num_partitions,
                     'Has Density Maps': True
                 })

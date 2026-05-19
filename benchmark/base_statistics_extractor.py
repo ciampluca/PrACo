@@ -121,10 +121,22 @@ class BaseStatisticsExtractor:
         """
         gt_count = gt_partition.sum()
         pred_count = pred_partition.sum()
+
+        assert gt_count >= 0 and pred_count >= 0, "Counts should be non-negative! Got gt_count={}, pred_count={}".format(gt_count, pred_count)
         
         mae = abs(pred_count - gt_count)
         tp = min(pred_count, gt_count)
         fp = max(0, pred_count - gt_count)
+
+        assert mae >= 0, "MAE should be non-negative! Got mae={}".format(mae)
+        assert tp >= 0, "TP should be non-negative! Got tp={}".format(tp)
+        assert fp >= 0, "FP should be non-negative! Got fp={}".format(fp)
+
+        # check if anything is NaN
+        if np.isnan(mae) or np.isnan(tp) or np.isnan(fp) or np.isnan(gt_count):
+            print("Warning: NaN value detected in metrics computation!")
+            print("gt_partition sum: {}, pred_partition sum: {}".format(gt_count, pred_count))
+            print("gt_partition: {}, pred_partition: {}".format(gt_partition, pred_partition))
         
         return {
             'mae': mae,
