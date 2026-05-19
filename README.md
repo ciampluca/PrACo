@@ -138,7 +138,7 @@ PrACo++ extends the original prompt-aware evaluation to multi-class settings. Th
 - Multi-class prompts: images can contain multiple object classes and each evaluation prompt may ask to count a specific class.
 - Per-class counts and per-prompt evaluation: predictions are evaluated per requested class and then aggregated across the dataset.
 - Metrics: PrACo++ supports standard counting metrics such as Mean Absolute Error (MAE) and Root Mean Squared Error (RMSE) computed per class and aggregated across classes; additionally, the extension paper defines prompt-adherence and semantic-aware analyses to measure whether the model followed the textual prompt. For formal definitions see the extension paper: https://arxiv.org/pdf/2605.02752
-- Localized metrics: optional localized matching and localized precision/recall metrics are supported.
+- Localized metrics: density maps are partitioned into grids so the benchmark can compute localized MAE, precision, recall, and F-score over quadrants and finer sub-grids. This evaluation exists for the original FSC-147 benchmark as well when ground-truth density maps are available, and PrACo++ extends the same idea to the multiclass setting.
 
 Outputs:
 - Per-image, per-class prediction files (CSV/JSON) matching the format used by the evaluation scripts.
